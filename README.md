@@ -23,7 +23,8 @@ Skills are then invocable by path, e.g.:
 | Folder | Skills | Status |
 |--------|--------|--------|
 | `retail-cloud/` | Product feed scraper | Active |
-| `b2c-commerce/` | Brand skinning (coming soon) | Planned |
+| `image-utils/` | Image shading, image slicing | Active |
+| `b2c-commerce/` | Brand skinning, catalog converter | Planned |
 | `b2b-commerce/` | — | Planned |
 | `oms/` | — | Planned |
 

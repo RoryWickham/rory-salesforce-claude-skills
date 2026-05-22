@@ -4,11 +4,16 @@ description: Scrape a website and generate a Retail Cloud (Predict Spring) produ
 
 # Retail Cloud Product Feed Scraper
 
-This skill guides you through scraping a website and generating a properly formatted Retail Cloud (Predict Spring) product import CSV.
+This skill builds a site-specific scraper to pull product data from a website and generate a properly formatted import CSV for Retail Cloud (Predict Spring).
+
+A few things to know before we get started:
+- **This is a back-and-forth process.** Every site is different — I'll investigate the site structure, build a scraper tailored to it, and run it. You'll want to stay nearby so you can answer questions and review output as we go.
+- **Sanity check the output.** Once the scraper runs, open the CSV and do a spot check — look at titles, images, prices, and sizes. If something looks off, let me know and I'll dig in and fix it.
+- **Iteration is normal.** It often takes a run or two to get everything right. Don't worry if the first pass isn't perfect.
 
 ## Step 1 — Set up a project folder
 
-Ask the user: "What would you like to name the project folder for this scrape? I'll create it under `~/claude-projects/` and save all scripts and output files there. (e.g. `market-street`, `nike`, `acme-demo`)"
+Say to the user: "Okay, to start this off, let's keep things clean and put this in a folder focused on just this scrape. What would you like to call it? I'll create it under `~/claude-projects/` and save all scripts and output files there. (e.g. `market-street`, `nike`, `acme-demo`)"
 
 Create the folder at `~/claude-projects/[folder-name]/` before proceeding. All scraper scripts and output CSVs go in this folder.
 

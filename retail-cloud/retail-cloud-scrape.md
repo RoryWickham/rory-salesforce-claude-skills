@@ -77,6 +77,8 @@ For alternate images:
 - **If images must be discovered**: try incrementing a suffix (e.g. `ALT100`, `ALT110`, `ALT120`...) with HEAD/GET requests to find which exist.
 - Put multiple alternate image URLs pipe-separated (`|`) in the `AlternateImageURL` / `additional_image_link` field
 - Make sure image URLs don't contain bare commas — encode as `%2C`
+- **Filter images by product ID** — when scraping images from the DOM, pages often include sidebar/related product images. Filter to only keep images whose URL contains the current product's ID to avoid polluting the feed with other products' images.
+- **Upgrade CDN image quality** — many sites serve thumbnail-sized images by default (e.g. Scene7 URLs with `wid=112&qlt=75`). Strip low-res params and replace with high-res equivalents. For Scene7: `base_url + "?fmt=png-alpha&qlt=95&wid=800&resMode=sharp2"`. Always check the CDN accepts arbitrary dimensions before assuming this works.
 
 ## Step 6 — Build and run the conversion script (if needed)
 

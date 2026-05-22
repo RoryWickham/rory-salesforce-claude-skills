@@ -97,6 +97,9 @@ Do a spot check:
 - Confirm total line count = 1 header + N data rows (no embedded newlines breaking rows)
 - Confirm no fields contain commas
 - Print a sample of 5 rows showing key fields (ID, Title, Color, Size, SalePrice)
+- **Images** — confirm `image_link` is populated for all rows. Check that `additional_image_link` has multiple pipe-separated URLs for at least some rows — if every row shows only one image or none, the image scraping logic likely needs fixing. Spot-check that the URLs actually belong to the product (not sidebar/related items).
+- **Prices** — confirm `sale_price` and `price` are populated. Flag any rows with blank prices to the user — blank prices cause import errors.
+- **Product type** — if the site has multiple categories, confirm `product_type` shows pipe-delimited values for products that appear in more than one category.
 
 Report the results to the user and confirm the file is ready to import.
 

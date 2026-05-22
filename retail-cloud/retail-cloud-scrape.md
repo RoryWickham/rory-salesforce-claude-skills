@@ -6,7 +6,13 @@ description: Scrape a website and generate a Retail Cloud (Predict Spring) produ
 
 This skill guides you through scraping a website and generating a properly formatted Retail Cloud (Predict Spring) product import CSV.
 
-## Step 1 — Get the target URL
+## Step 1 — Set up a project folder
+
+Ask the user: "What would you like to name the project folder for this scrape? I'll create it under `~/claude-projects/` and save all scripts and output files there. (e.g. `market-street`, `nike`, `acme-demo`)"
+
+Create the folder at `~/claude-projects/[folder-name]/` before proceeding. All scraper scripts and output CSVs go in this folder.
+
+## Step 2 — Get the target URL
 
 Ask the user: "What is the URL of the site you want to scrape?"
 
@@ -20,7 +26,7 @@ Which would you prefer?"
 - If they choose a single category: scrape that category only, verify output, then ask if they want to continue with the rest of the site
 - If they choose full site: crawl the home page to discover all navigable category URLs, then **recursively follow subcategory links** from each category page to build a complete list of all leaf-level category URLs. Deduplicate product URLs across all categories before scraping PDPs — a product that appears in multiple categories should only be scraped once. Combine all results into a single output file.
 
-## Step 2 — Column template
+## Step 3 — Column template
 
 Tell the user: "I'll use the standard Retail Cloud column set as the template. If you have your own import file you'd like to use instead, share the file path and I'll use that."
 
@@ -28,7 +34,7 @@ Tell the user: "I'll use the standard Retail Cloud column set as the template. I
 - If not: use the following default column set:
   `id, item_group_id, title, description, link, image_link, additional_image_link, color, size, gtin, sale_price, price, ProductClass, manufacturer, product_type, CurrencyCode, onlineinventory`
 
-## Step 3 — Field customizations
+## Step 4 — Field customizations
 
 Tell the user the following defaults up front:
 - **gtin** will be auto-populated with a random 7-digit number if the site doesn't provide one
@@ -44,7 +50,7 @@ Then ask:
 - If they provide a range: use `random.randint(min, max)` per variant row
 - If they confirm the default: use `random.randint(5, 500)` per variant row
 
-## Step 4 — Assess the site and build the scraper
+## Step 5 — Assess the site and build the scraper
 
 Before writing any scraper code, investigate how the site is structured:
 
@@ -59,7 +65,7 @@ Before writing any scraper code, investigate how the site is structured:
    - JS variable assignments like `masterData = {...}` or `app.product.data.cache[...] = {...}` — often has full variant data (color, size, UPC/GTIN)
    - `window.__STATE__` or similar SSR data blobs
 
-Write a Python scraper (`scrape_[sitename].py`) in `~/claude-projects/[sitename]/` that:
+Write a Python scraper (`scrape_[sitename].py`) in the project folder created in Step 1 that:
 - Gets product URLs from the sitemap (preferred) or listing pages
 - If crawling category pages: recursively follow subcategory links from each category page to reach all leaf-level categories. Track **all categories each product appears in** (a product can belong to multiple categories). Deduplicate product URLs before scraping — each product should only be scraped once. Write `product_type` as a pipe-separated list of all category names the product belongs to (e.g. `"women|new-arrivals"`).
 - If using a listing page: clicks "Load More" buttons until all products are loaded, using a fixed `wait_for_timeout(3000)` after each click — do NOT use `wait_for_load_state("networkidle")` as it times out
@@ -70,7 +76,7 @@ Write a Python scraper (`scrape_[sitename].py`) in `~/claude-projects/[sitename]
 
 Run the scraper. Verify the product count looks complete before proceeding.
 
-## Step 5 — Image URLs
+## Step 6 — Image URLs
 
 For alternate images:
 - **If data comes from JSON-LD**: the `image` array already contains all available images. Use `images[0]` as `imageURL` and pipe-join `images[1:]` into `AlternateImageURL`. No discovery needed. For multi-color products, filter images by color slug in the URL to get per-color image sets.
@@ -80,7 +86,7 @@ For alternate images:
 - **Filter images by product ID** — when scraping images from the DOM, pages often include sidebar/related product images. Filter to only keep images whose URL contains the current product's ID to avoid polluting the feed with other products' images.
 - **Upgrade CDN image quality** — many sites serve thumbnail-sized images by default (e.g. Scene7 URLs with `wid=112&qlt=75`). Strip low-res params and replace with high-res equivalents. For Scene7: `base_url + "?fmt=png-alpha&qlt=95&wid=800&resMode=sharp2"`. Always check the CDN accepts arbitrary dimensions before assuming this works.
 
-## Step 6 — Build and run the conversion script (if needed)
+## Step 7 — Build and run the conversion script (if needed)
 
 If the scraper outputs raw data (Excel), write a conversion script (`convert_[sitename]_to_feed.py`) in `~/claude-projects` that:
 - Reads the raw file
@@ -91,7 +97,7 @@ If the scraper outputs raw data (Excel), write a conversion script (`convert_[si
 
 Run the conversion script.
 
-## Step 7 — Verify the output
+## Step 8 — Verify the output
 
 Do a spot check:
 - Confirm total line count = 1 header + N data rows (no embedded newlines breaking rows)
@@ -106,7 +112,7 @@ Report the results to the user and confirm the file is ready to import.
 If any custom fields were added beyond the standard column set, remind the user:
 > "You have custom fields in this feed. To make them visible on the PDP in Retail Cloud, go to **CMS → Field Mapping** and map each custom field to one of the available **CustomString** fields (e.g. CustomString1, CustomString2, etc.)."
 
-## Step 8 — Next steps
+## Step 9 — Next steps
 
 Ask the user: "The file is ready to import. Would you like to scrape another category, or shall we go ahead and try scraping all categories at once?"
 

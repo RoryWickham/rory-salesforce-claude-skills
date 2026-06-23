@@ -127,9 +127,11 @@ Design principles:
 
 Run the app in a browser at the deployed URL and verify it works end to end before handing off.
 
-## Step 6 — Wire it into Retail Cloud
+## Step 6 — Decide: GNDN or PunchOut?
 
-Tell the user:
+Ask the user whether the tile should just display information (GNDN — no write-back) or whether it should **add products to the POS cart and/or navigate** when the user confirms an action.
+
+### Option A — GNDN (display only)
 
 > "Your tile is live at: **[URL]**
 >
@@ -140,9 +142,44 @@ Tell the user:
 > 3. Under **Deep Link**, select **Webview via URL**
 > 4. Under **URL Options**, select **Custom URL**
 > 5. Paste **[URL]** into the URL field
-> 6. Save and publish the layout
->
-> The tile will now appear in that cell in the POS app and load your experience in an iFrame."
+> 6. Save and publish the layout"
+
+### Option B — PunchOut (writes back to POS cart)
+
+If the tile needs to add products to the cart or navigate the POS app, use PunchOut mode.
+
+**Tile code — use the `Done` command to bundle actions atomically:**
+```js
+const inPOS = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.Done;
+if (inPOS) {
+  window.webkit.messageHandlers.Done.postMessage(JSON.stringify({
+    command: 'Done',
+    debugMode: 0,
+    actions: [
+      { command: 'AddToCart', debugMode: 0, count: 1, products: [{ sku: '<SKU>', quantity: 1 }] },
+      { command: 'GoToCart', debugMode: 0 }
+    ]
+  }));
+} else {
+  // fallback for browser preview — show success screen
+}
+```
+
+> **Critical:** Do NOT fire `AddToCart` and `GoToCart` as two separate `postMessage` calls with a setTimeout delay. This is a race condition — the POS may navigate before the cart add completes, resulting in "There are no items in your cart" even though the POS says "added successfully." Always use `Done` to bundle multiple commands atomically.
+
+The four supported PunchOut commands are `AddToCart`, `CustomerSelected`, `GoToCart`, and `Done`. `Done` executes an array of actions in sequence before closing/navigating.
+
+**CMS config (user must do this):**
+1. **Store Management → Store Settings → Advanced → Punchout Configurations**
+   - Add a command with a descriptive name (e.g. `ServiceDesk`)
+   - Set the URL to the deployed tile URL
+2. **Edit your layout → tile cell**
+   - Deep Link → Webview via URL
+   - URL Options → **Punchout** (not Custom URL)
+   - Available Punchout → select the command name you just created
+   - Save and publish
+
+**SKU note:** The `sku` value in the `AddToCart` payload must match the Product ID in Retail Cloud CMS exactly. Verify by searching for the product in CMS → Products and checking the Product ID field. The scraped CSV `id` column is usually correct but always confirm at least one before wiring up the full dropdown.
 
 ## Step 7 — Iterate
 

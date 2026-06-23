@@ -1,3 +1,0 @@
-name = "vin-lookup"
-main = "worker.js"
-compatibility_date = "2024-11-01"

@@ -133,6 +133,8 @@ Report the results to the user and confirm the file is ready to import.
 If any custom fields were added beyond the standard column set, remind the user:
 > "You have custom fields in this feed. To make them visible on the PDP in Retail Cloud, go to **CMS → Field Mapping** and map each custom field to one of the available **CustomString** fields (e.g. CustomString1, CustomString2, etc.)."
 
+**Custom field naming:** Always use PascalCase for custom column names (e.g. `AdditionalCharges`, `ModelYear`, `RidingStyle`) — not camelCase or snake_case.
+
 ## Step 10 — Next steps
 
 Ask the user: "The file is ready to import. Would you like to scrape another category, or shall we go ahead and try scraping all categories at once?"

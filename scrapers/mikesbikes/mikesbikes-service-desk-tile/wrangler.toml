@@ -1,0 +1,4 @@
+name = "mikesbikes-service-desk"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+account_id = "4586c3c345576c865f390e7d9c9a34df"

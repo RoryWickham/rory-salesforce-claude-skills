@@ -1,0 +1,899 @@
+const HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Service Desk — Mike's Bikes</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brand: #003282;
+    --brand-light: #0047b8;
+    --brand-dark: #00205a;
+    --accent: #e8b800;
+    --green: #1a8a4a;
+    --green-bg: #e6f4ec;
+    --amber: #c26b00;
+    --amber-bg: #fff3e0;
+    --red: #c0392b;
+    --red-bg: #fdecea;
+    --grey: #6b7280;
+    --border: #e2e8f0;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --text: #1a202c;
+    --sub: #64748b;
+    --radius: 12px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--brand);
+    color: white;
+    padding: 14px 16px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,50,0.25);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .header-logo {
+    width: 28px;
+    height: 28px;
+    background: white;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .header-logo svg { width: 20px; height: 20px; }
+  .header-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+  .header-sub {
+    font-size: 11px;
+    opacity: 0.65;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .powered-by {
+    font-size: 10px;
+    opacity: 0.5;
+    text-align: right;
+    line-height: 1.3;
+  }
+  .powered-by strong { opacity: 0.9; display: block; font-size: 11px; }
+
+  /* FILTER BAR */
+  .filter-bar {
+    padding: 10px 16px;
+    background: white;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: white;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--sub);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .filter-chip.active {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: white;
+  }
+
+  /* SUMMARY BAR */
+  .summary-bar {
+    padding: 10px 16px;
+    display: flex;
+    gap: 8px;
+  }
+  .summary-pill {
+    flex: 1;
+    background: var(--card);
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .summary-pill .num {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .summary-pill .lbl {
+    font-size: 10px;
+    color: var(--sub);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 2px;
+  }
+  .num.green { color: var(--green); }
+  .num.amber { color: var(--amber); }
+  .num.grey  { color: var(--grey); }
+
+  /* TECH CARDS */
+  .section-label {
+    padding: 4px 16px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--sub);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  .cards {
+    padding: 0 12px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 14px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    transition: opacity 0.2s;
+  }
+  .card.busy { opacity: 0.55; }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    letter-spacing: -1px;
+  }
+
+  .card-body { flex: 1; min-width: 0; }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .tech-name {
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.2;
+  }
+  .tech-role {
+    font-size: 11px;
+    color: var(--sub);
+    margin-bottom: 6px;
+  }
+  .bay-badge {
+    background: var(--brand);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-dot.available { background: var(--green); }
+  .status-dot.busy      { background: var(--amber); }
+  .status-dot.break     { background: var(--grey); }
+  .status-text {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .status-text.available { color: var(--green); }
+  .status-text.busy      { color: var(--amber); }
+  .status-text.break     { color: var(--grey); }
+  .status-eta {
+    font-size: 11px;
+    color: var(--sub);
+    margin-left: 2px;
+  }
+
+  .specialties {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+  .spec-chip {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: #eef2f8;
+    color: var(--brand);
+    font-weight: 500;
+  }
+  .spec-chip.highlight {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  .assign-btn {
+    width: 100%;
+    padding: 9px 0;
+    background: var(--brand);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .assign-btn:hover { background: var(--brand-light); }
+  .assign-btn:disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: default;
+  }
+
+  /* LOADING OVERLAY */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .loading-overlay.show {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .spinner-box {
+    background: white;
+    border-radius: 16px;
+    padding: 28px 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  }
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e2e8f0;
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brand);
+  }
+  .spinner-sub {
+    font-size: 11px;
+    color: var(--sub);
+    margin-top: -8px;
+  }
+
+  /* CONFIRMATION PANEL */
+  .panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 500;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .panel-overlay.show {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .panel {
+    width: 100%;
+    background: white;
+    border-radius: 20px 20px 0 0;
+    padding: 20px 18px 32px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+  .panel-overlay.show .panel {
+    transform: translateY(0);
+  }
+  .panel-handle {
+    width: 40px;
+    height: 4px;
+    background: #d1d5db;
+    border-radius: 2px;
+    margin: 0 auto 18px;
+  }
+  .panel-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--brand);
+  }
+  .panel-sub {
+    font-size: 12px;
+    color: var(--sub);
+    margin-bottom: 18px;
+  }
+
+  .panel-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-row:last-of-type { border-bottom: none; }
+  .panel-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #eef2f8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .panel-icon svg { width: 18px; height: 18px; color: var(--brand); }
+  .panel-lbl { font-size: 11px; color: var(--sub); margin-bottom: 1px; }
+  .panel-val { font-size: 14px; font-weight: 600; }
+
+  .service-selector {
+    margin-bottom: 16px;
+  }
+  .service-selector label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sub);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .service-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    background: white;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  .confirm-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--brand);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 16px;
+    letter-spacing: -0.2px;
+  }
+  .confirm-btn:hover { background: var(--brand-light); }
+
+  .cancel-btn {
+    width: 100%;
+    padding: 12px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    color: var(--sub);
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
+  /* SUCCESS STATE */
+  .success-overlay {
+    position: fixed;
+    inset: 0;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 998;
+    padding: 32px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    text-align: center;
+  }
+  .success-overlay.show {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .success-check {
+    width: 72px;
+    height: 72px;
+    background: var(--green-bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .success-check svg { width: 36px; height: 36px; }
+  .success-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .success-sub {
+    font-size: 14px;
+    color: var(--sub);
+    line-height: 1.5;
+    margin-bottom: 24px;
+    max-width: 280px;
+  }
+  .success-ticket {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 16px 20px;
+    width: 100%;
+    max-width: 320px;
+    text-align: left;
+    margin-bottom: 28px;
+  }
+  .success-ticket-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 4px 0;
+  }
+  .success-ticket-row .tk-lbl { color: var(--sub); }
+  .success-ticket-row .tk-val { font-weight: 600; }
+  .success-ticket-id {
+    font-size: 12px;
+    color: var(--sub);
+    text-align: center;
+    margin-top: 8px;
+    font-family: monospace;
+  }
+  .done-btn {
+    width: 100%;
+    max-width: 320px;
+    padding: 14px;
+    background: var(--brand);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING SPLASH -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner-box">
+    <div class="spinner"></div>
+    <div class="spinner-label">Loading Service Desk</div>
+    <div class="spinner-sub">Syncing with HubTiger...</div>
+  </div>
+</div>
+
+<!-- CONFIRMATION PANEL -->
+<div class="panel-overlay" id="panelOverlay">
+  <div class="panel">
+    <div class="panel-handle"></div>
+    <div class="panel-title" id="panelTitle">Assign Bay</div>
+    <div class="panel-sub" id="panelSub">Confirm assignment details below</div>
+
+    <div class="panel-row">
+      <div class="panel-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div>
+        <div class="panel-lbl">Technician</div>
+        <div class="panel-val" id="panelTech">—</div>
+      </div>
+    </div>
+
+    <div class="panel-row">
+      <div class="panel-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      </div>
+      <div>
+        <div class="panel-lbl">Bay</div>
+        <div class="panel-val" id="panelBay">—</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 14px;" class="service-selector">
+      <label>Service</label>
+      <select class="service-select" id="serviceSelect">
+        <option value="8175216|Pro Tune-Up|149" selected>Pro Tune-Up — $149</option>
+        <option value="9261093|Comp Tune-Up|99">Comp Tune-Up — $99</option>
+        <option value="6075550|Super Tune-Up|199">Super Tune-Up — $199</option>
+        <option value="2766222|Brake Adjustment|25">Brake Adjustment — $25</option>
+        <option value="8948853|Drivetrain Clean|35">Drivetrain Clean — $35</option>
+        <option value="1688352|Chain Install & Adjustment|30">Chain Install & Adjustment — $30</option>
+        <option value="4252035|Tube Replacement|20">Tube Replacement — $20</option>
+        <option value="2025063|Bike Build from Box|75">Bike Build from Box — $75</option>
+        <option value="8384474|Suspension Fork Service|120">Suspension Fork Service — $120</option>
+        <option value="9183494|Disc Brake Bleed|45">Disc Brake Bleed — $45</option>
+      </select>
+    </div>
+
+    <button class="confirm-btn" id="confirmBtn" onclick="confirmAssignment()">Confirm Assignment</button>
+    <button class="cancel-btn" onclick="closePanel()">Cancel</button>
+  </div>
+</div>
+
+<!-- SUCCESS OVERLAY -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-check">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#1a8a4a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  </div>
+  <div class="success-title">Bay Assigned!</div>
+  <div class="success-sub" id="successSub">The customer has been checked in and the technician has been notified.</div>
+  <div class="success-ticket" id="successTicket">
+    <div class="success-ticket-row"><span class="tk-lbl">Technician</span><span class="tk-val" id="stTech">—</span></div>
+    <div class="success-ticket-row"><span class="tk-lbl">Bay</span><span class="tk-val" id="stBay">—</span></div>
+    <div class="success-ticket-row"><span class="tk-lbl">Service</span><span class="tk-val" id="stService">—</span></div>
+    <div class="success-ticket-row"><span class="tk-lbl">Est. Wait</span><span class="tk-val" id="stWait">—</span></div>
+  </div>
+  <div class="success-ticket-id" id="stTicketId">HT-XXXXXX</div>
+  <button class="done-btn" onclick="resetAll()">Done</button>
+</div>
+
+<!-- MAIN -->
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">
+      <div class="header-logo">
+        <!-- Bicycle icon in brand blue -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="#003282" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="5.5" cy="16" r="3.5"/><circle cx="18.5" cy="16" r="3.5"/>
+          <path d="M5.5 16l5-8h4l2 4"/>
+          <path d="M12 8l2 4h4.5"/>
+          <circle cx="12" cy="5" r="1.5" fill="#003282" stroke="none"/>
+        </svg>
+      </div>
+      <div>
+        <div class="header-title">Service Desk</div>
+        <div class="header-sub">Mike's Bikes — Denver, CO</div>
+      </div>
+    </div>
+    <div class="powered-by">
+      <strong>HubTiger</strong>
+      Shop Management
+    </div>
+  </div>
+</div>
+
+<div class="filter-bar" id="filterBar">
+  <div class="filter-chip active" onclick="setFilter('all', this)">All Bays</div>
+  <div class="filter-chip" onclick="setFilter('available', this)">Available</div>
+  <div class="filter-chip" onclick="setFilter('tune-up', this)">Tune-Ups</div>
+  <div class="filter-chip" onclick="setFilter('fitting', this)">Fitting</div>
+  <div class="filter-chip" onclick="setFilter('assembly', this)">Assembly</div>
+</div>
+
+<div class="summary-bar">
+  <div class="summary-pill"><div class="num" id="sumTotal">—</div><div class="lbl">Bays</div></div>
+  <div class="summary-pill"><div class="num green" id="sumAvail">—</div><div class="lbl">Available</div></div>
+  <div class="summary-pill"><div class="num amber" id="sumBusy">—</div><div class="lbl">In Service</div></div>
+  <div class="summary-pill"><div class="num grey" id="sumBreak">—</div><div class="lbl">On Break</div></div>
+</div>
+
+<div class="section-label" id="sectionLabel">All Technicians</div>
+<div class="cards" id="cardsContainer"></div>
+
+<script>
+  const TECHS = [
+    {
+      name: 'Marcus Webb',
+      role: 'Senior Mechanic',
+      bay: 'Bay 1',
+      status: 'available',
+      statusLabel: 'Available Now',
+      eta: '',
+      specialties: ['Pro Tune-Up', 'Super Tune-Up', 'Suspension Service', 'Drivetrain'],
+      color: '#003282',
+      initials: 'MW',
+      filterTags: ['tune-up', 'suspension']
+    },
+    {
+      name: 'Jordan Reyes',
+      role: 'Bike Fitting Specialist',
+      bay: 'Bay 2',
+      status: 'available',
+      statusLabel: 'Available Now',
+      eta: '',
+      specialties: ['Bike Fitting', 'Bike Assembly', 'Brake Adjustment'],
+      color: '#1a5e35',
+      initials: 'JR',
+      filterTags: ['fitting', 'assembly']
+    },
+    {
+      name: 'Taylor Okonkwo',
+      role: 'Build & Assembly Tech',
+      bay: 'Bay 3',
+      status: 'busy',
+      statusLabel: 'With Customer',
+      eta: '~18 min',
+      specialties: ['Bike Assembly', 'Comp Tune-Up', 'Chain & Cable'],
+      color: '#6b3600',
+      initials: 'TO',
+      filterTags: ['assembly', 'tune-up']
+    },
+    {
+      name: 'Ethan Hunt',
+      role: 'Mechanic',
+      bay: 'Bay 4',
+      status: 'available',
+      statusLabel: 'Available Now',
+      eta: '',
+      specialties: ['Comp Tune-Up', 'Flat Repair', 'Brake Adjustment', 'Chain & Cable'],
+      color: '#5b1f82',
+      initials: 'EH',
+      filterTags: ['tune-up']
+    },
+    {
+      name: 'Devon Halsted',
+      role: 'Senior Mechanic',
+      bay: 'Bay 5',
+      status: 'break',
+      statusLabel: 'On Break',
+      eta: '~10 min',
+      specialties: ['Pro Tune-Up', 'Suspension Service', 'Bike Fitting'],
+      color: '#1a4a6b',
+      initials: 'DH',
+      filterTags: ['tune-up', 'fitting', 'suspension']
+    }
+  ];
+
+  let activeTech = null;
+  let currentFilter = 'all';
+
+  function setFilter(filter, el) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    renderCards();
+  }
+
+  function renderCards() {
+    const container = document.getElementById('cardsContainer');
+    const label = document.getElementById('sectionLabel');
+    container.innerHTML = '';
+
+    const filtered = TECHS.filter(t => {
+      if (currentFilter === 'all') return true;
+      if (currentFilter === 'available') return t.status === 'available';
+      return t.filterTags.includes(currentFilter);
+    });
+
+    const labels = {
+      all: 'All Technicians',
+      available: 'Available Now',
+      'tune-up': 'Tune-Up Specialists',
+      fitting: 'Fitting Specialists',
+      assembly: 'Build & Assembly'
+    };
+    label.textContent = labels[currentFilter] || 'All Technicians';
+
+    filtered.forEach(t => {
+      const isBusy = t.status !== 'available';
+      const card = document.createElement('div');
+      card.className = 'card' + (isBusy ? ' busy' : '');
+
+      const specsHtml = t.specialties.map(s => {
+        const highlight = (currentFilter === 'tune-up' && s.includes('Tune')) ||
+                          (currentFilter === 'fitting' && s.includes('Fitting')) ||
+                          (currentFilter === 'assembly' && s.includes('Assembly'));
+        return \`<span class="spec-chip\${highlight ? ' highlight' : ''}">\${s}</span>\`;
+      }).join('');
+
+      const btnDisabled = isBusy ? 'disabled' : '';
+      const btnText = t.status === 'busy' ? \`Free in \${t.eta}\` : t.status === 'break' ? \`Back \${t.eta}\` : 'Assign Bay';
+
+      card.innerHTML = \`
+        <div class="avatar" style="background:\${t.color}">\${t.initials}</div>
+        <div class="card-body">
+          <div class="card-top">
+            <div>
+              <div class="tech-name">\${t.name}</div>
+              <div class="tech-role">\${t.role}</div>
+            </div>
+            <div class="bay-badge">\${t.bay}</div>
+          </div>
+          <div class="status-row">
+            <div class="status-dot \${t.status}"></div>
+            <span class="status-text \${t.status}">\${t.statusLabel}</span>
+            \${t.eta ? \`<span class="status-eta">\${t.eta}</span>\` : ''}
+          </div>
+          <div class="specialties">\${specsHtml}</div>
+          <button class="assign-btn" onclick="openPanel('\${t.name}', '\${t.bay}')" \${btnDisabled}>\${btnText}</button>
+        </div>
+      \`;
+      container.appendChild(card);
+    });
+
+    // Update summary counts
+    const all = TECHS;
+    document.getElementById('sumTotal').textContent = all.length;
+    document.getElementById('sumAvail').textContent = all.filter(t => t.status === 'available').length;
+    document.getElementById('sumBusy').textContent  = all.filter(t => t.status === 'busy').length;
+    document.getElementById('sumBreak').textContent = all.filter(t => t.status === 'break').length;
+  }
+
+  function openPanel(techName, bay) {
+    activeTech = { name: techName, bay: bay };
+    document.getElementById('panelTitle').textContent = \`Assign \${bay}\`;
+    document.getElementById('panelSub').textContent = \`\${techName} · \${bay}\`;
+    document.getElementById('panelTech').textContent = techName;
+    document.getElementById('panelBay').textContent = bay;
+    document.getElementById('panelOverlay').classList.add('show');
+  }
+
+  function closePanel() {
+    document.getElementById('panelOverlay').classList.remove('show');
+    activeTech = null;
+  }
+
+  function confirmAssignment() {
+    const serviceRaw = document.getElementById('serviceSelect').value;
+    const [sku, serviceName] = serviceRaw.split('|');
+    const tech = { ...activeTech };
+    closePanel();
+
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.querySelector('.spinner-label').textContent = 'Booking Service';
+    overlay.querySelector('.spinner-sub').textContent = 'Updating HubTiger schedule...';
+    overlay.classList.add('show');
+
+    setTimeout(() => {
+      overlay.classList.remove('show');
+      firePunchOut(sku, serviceName, tech);
+    }, 1400);
+  }
+
+  function firePunchOut(sku, serviceName, tech) {
+    const inPOS = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.AddToCart;
+
+    if (inPOS) {
+      // Use Done to bundle AddToCart + GoToCart atomically
+      window.webkit.messageHandlers.Done.postMessage(JSON.stringify({
+        command: 'Done',
+        debugMode: 0,
+        actions: [
+          { command: 'AddToCart', debugMode: 0, count: 1, products: [{ sku: sku, quantity: 1 }] },
+          { command: 'GoToCart', debugMode: 0 }
+        ]
+      }));
+    } else {
+      // Outside POS (browser preview) — show success screen instead
+      showSuccess(tech, serviceName);
+    }
+  }
+
+  function showSuccess(tech, serviceName) {
+    const waitMins = Math.floor(Math.random() * 5) + 3;
+    const ticketNum = Math.floor(100000 + Math.random() * 900000);
+
+    document.getElementById('stTech').textContent = tech.name;
+    document.getElementById('stBay').textContent = tech.bay;
+    document.getElementById('stService').textContent = serviceName;
+    document.getElementById('stWait').textContent = \`Ready in ~\${waitMins} min\`;
+    document.getElementById('stTicketId').textContent = 'HT-' + ticketNum;
+    document.getElementById('successSub').textContent = \`\${tech.name} has been notified and is preparing \${tech.bay}.\`;
+    document.getElementById('successOverlay').classList.add('show');
+  }
+
+  function resetAll() {
+    document.getElementById('successOverlay').classList.remove('show');
+    currentFilter = 'all';
+    document.querySelectorAll('.filter-chip').forEach((c, i) => {
+      c.classList.toggle('active', i === 0);
+    });
+    renderCards();
+  }
+
+  // Initial load with splash
+  window.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.add('show');
+    setTimeout(() => {
+      overlay.classList.remove('show');
+      renderCards();
+    }, 1300);
+  });
+</script>
+</body>
+</html>
+`;
+
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname === "/" || url.pathname === "") {
+      return new Response(HTML, {
+        headers: {
+          "Content-Type": "text/html;charset=UTF-8",
+          "Cache-Control": "no-cache",
+          "X-Frame-Options": "ALLOWALL",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    }
+    return new Response("Not found", { status: 404 });
+  },
+};

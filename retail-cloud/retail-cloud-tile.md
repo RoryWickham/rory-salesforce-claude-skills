@@ -65,22 +65,43 @@ Design principles:
    name = "<tilename>-tile"
    main = "worker.js"
    compatibility_date = "2024-11-01"
+   account_id = "4586c3c345576c865f390e7d9c9a34df"
    ```
 
 4. Use this sync command to keep `worker.js` in sync with `index.html` after any edits:
    ```bash
-   python3 - <<'EOF'
+   python3 - <<'PYEOF'
    with open('index.html', 'r') as f:
        html = f.read()
-   html = html.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${')
-   with open('worker.js', 'r') as f:
-       worker = f.read()
-   import re
-   new_worker = re.sub(r'const HTML = `.*?`;', 'const HTML = `' + html + '`;', worker, flags=re.DOTALL)
+   html_escaped = html.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${')
+
+   WORKER = 'const HTML = `' + html_escaped + '''`;
+
+   export default {
+     async fetch(request) {
+       const url = new URL(request.url);
+       if (url.pathname === "/" || url.pathname === "") {
+         return new Response(HTML, {
+           headers: {
+             "Content-Type": "text/html;charset=UTF-8",
+             "Cache-Control": "no-cache",
+             "X-Frame-Options": "ALLOWALL",
+             "Access-Control-Allow-Origin": "*",
+           },
+         });
+       }
+       return new Response("Not found", { status: 404 });
+     },
+   };
+   '''
+
    with open('worker.js', 'w') as f:
-       f.write(new_worker)
-   EOF
+       f.write(WORKER)
+   print("Sync complete.")
+   PYEOF
    ```
+
+   > **Why this approach:** Do NOT use `re.sub` to replace the `const HTML = \`...\`;` block in the existing worker.js. The regex stops at the first `` `; `` it finds in the worker footer JS, corrupting the file. Always write worker.js from scratch on each sync.
 
 5. Check if wrangler is installed:
    ```bash

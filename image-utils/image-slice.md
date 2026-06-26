@@ -13,6 +13,7 @@ Ask:
 2. "How would you like to slice it?"
    - **By count** — e.g. "5 horizontal slices" or "3 columns × 2 rows"
    - **By dimensions** — e.g. "each tile should be 800×160 px"
+   - If the user mentions this is for a **Retail Cloud home page tab**, suggest **5 horizontal slices** as the default before asking.
 3. "Where should the output files be saved? (default: same folder as the source image)"
 4. "What should the output files be named? (e.g. `associateImage_1.png`, `associateImage_2.png`...)"
 

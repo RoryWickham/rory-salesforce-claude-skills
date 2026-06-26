@@ -14,6 +14,11 @@ Split a large image into equal tiles or horizontal strips. Useful for breaking a
 
 **Invoke:** `/salesforce/image-utils/image-slice`
 
+### `favicon-fetch`
+Download a storefront's `favicon.ico`, save it to the project folder, and export the largest embedded frame as a PNG. Useful for grabbing a brand icon for demo asset prep.
+
+**Invoke:** `/salesforce/image-utils/favicon-fetch`
+
 ## Requirements
 
 - Python 3

@@ -46,9 +46,32 @@ def slice_image(input_path, output_dir, base_name, cols, rows):
             n += 1
 ```
 
-## Step 4 — Done
+## Step 4 — Offer shading
 
-Report how many tiles were saved and where.
+After slicing, ask: "Would you like to apply a dark overlay to any or all of the slices? (Light ~20%, medium ~40%, heavy ~60%)"
+
+If yes:
+- Ask which slices (default: all)
+- Ask shade level
+- Apply using PIL:
+
+```python
+from PIL import Image
+
+def shade_image(path, alpha):
+    img = Image.open(path).convert("RGBA")
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, alpha))
+    shaded = Image.alpha_composite(img, overlay).convert("RGB")
+    shaded.save(path)
+```
+
+Alpha values: light = 50, medium = 100, heavy = 150, custom % = round(pct / 100 * 255)
+
+Save backups (`filename_backup.png`) before modifying. Skip if a backup already exists.
+
+## Step 5 — Done
+
+Report how many tiles were saved (and shaded if applicable) and where.
 
 ## Critical rules
 

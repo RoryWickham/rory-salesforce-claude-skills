@@ -13,10 +13,24 @@ Generates a full Salesforce B2C Commerce site archive from a live brand website:
 
 ## Before Running
 
-You need:
+### Step 0 — Confirm Toolkit deployment (required)
+
+Before running this skill, confirm:
+
+> "Have you deployed the latest B2C Commerce Toolkit to this sandbox, including RefArch, RefArch Global, and NTO? And have you created a separate custom site in the Toolkit for this brand?"
+
+If **no** — stop here. The Toolkit must be deployed first. It creates the base infrastructure (site configs, OCAPI settings, stripped-down NTO base) AND the blank custom site that this skill will populate.
+
+If **yes** — continue.
+
+**Important:** This skill only touches the custom brand site. It creates net-new catalogs, pricebooks, and inventory lists scoped to that site. NTO, RefArch, and RefArch Global are never modified.
+
+### What you need
 1. **Brand site URL** — must have a publicly accessible product catalog
-2. **dw.json** — WebDAV credentials for the target sandbox (placed in your working directory before import step)
-3. **b2c CLI** — run `npx @salesforce/b2c-cli --version` to verify
+2. **Target sandbox hostname** — e.g. `zzsb-007.dx.commercecloud.salesforce.com`
+3. **Target site ID** — the site the SE created in the Toolkit for this brand (e.g. `meatchurch`)
+4. **dw.json** — WebDAV credentials for that sandbox
+5. **b2c CLI** — run `npx @salesforce/b2c-cli --version` to verify
 
 ---
 
@@ -95,9 +109,11 @@ npx @salesforce/b2c-cli job import {output-dir} --show-log
 Currently supported:
 - **Shopify** — uses Shopify storefront JSON API (`/products.json`); auto-detected
 
-Planned:
-- SFRA / PWA Kit — requires Playwright scraper (not yet implemented)
-- Static HTML sites — requires custom scraper
+Planned (long-term goal: auto-detect platform and route to the right scraper):
+- **commercetools** — REST API-based
+- **Oracle Commerce (ATG)** — likely needs Playwright
+- **SFRA / PWA Kit** — needs Playwright
+- **Static HTML** — custom per-site
 
 ---
 

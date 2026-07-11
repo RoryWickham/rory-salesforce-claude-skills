@@ -128,6 +128,9 @@ Do a spot check:
 - **Prices** — confirm `sale_price` and `price` are populated. Flag any rows with blank prices to the user — blank prices cause import errors.
 - **Product type** — if the site has multiple categories, confirm `product_type` shows pipe-delimited values for products that appear in more than one category.
 
+**File size** — check the output file size. If it's over 100MB, warn the user:
+> "⚠️ This file is [X]MB — too large to manually upload to Retail Cloud. You'll need to use WebDAV, FTP, or SFTP to transfer it, then schedule an import job rather than uploading through the UI."
+
 Report the results to the user and confirm the file is ready to import.
 
 If any custom fields were added beyond the standard column set, remind the user:
@@ -152,3 +155,4 @@ Ask the user: "The file is ready to import. Would you like to scrape another cat
 - After the scraper runs, always verify the product count looks complete before proceeding to conversion
 - If Playwright or openpyxl are not installed, install them with pip3 before running
 - Category pages protected by Cloudflare/Kasada often return 429 — try individual PDPs and sitemaps instead
+- Always check output file size — if over 100MB, warn the user they cannot manually upload to Retail Cloud and must use WebDAV/FTP/SFTP with a scheduled import job

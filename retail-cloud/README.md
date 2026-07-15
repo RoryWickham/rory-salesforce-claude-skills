@@ -25,6 +25,21 @@ Scrapes a retail website and generates a properly formatted Retail Cloud product
 - `playwright` (`pip3 install playwright && playwright install chromium`) — only needed for JS-rendered sites
 - `curl` — used for static/Shopify sites
 
+### `retail-cloud-clienteling-panels`
+
+Recolors the three Retail Cloud clienteling layout background panel images (LeftPanel, CenterPanel, RightPanel) from black to a brand hex color. Source panel assets (456×222px rounded-rectangle shapes) are bundled in this skills repo.
+
+**Invoke:** `/salesforce/retail-cloud/retail-cloud-clienteling-panels`
+
+**What it does:**
+- Takes a target brand hex color and output folder
+- Replaces all black pixels in the bundled source panels with the target color
+- Outputs `LeftPanel<hex>.png`, `CenterPanel<hex>.png`, `RightPanel<hex>.png` ready to upload to Retail Cloud CMS
+
+**Requirements:**
+- Python 3
+- `Pillow` (`pip3 install Pillow`)
+
 ## Examples
 
 `examples/scrape_marketstreet.py` — Playwright scraper for the Market Street Salesforce PWA Kit demo storefront.

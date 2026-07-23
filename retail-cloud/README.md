@@ -40,6 +40,21 @@ Recolors the three Retail Cloud clienteling layout background panel images (Left
 - Python 3
 - `Pillow` (`pip3 install Pillow`)
 
+### `retail-cloud-color-swatch`
+
+Generates a hosted solid-color PNG swatch image from a hex code, ready to paste as a product image URL in Retail Cloud.
+
+**Invoke:** `/salesforce/retail-cloud/retail-cloud-color-swatch`
+
+**What it does:**
+- Takes a hex color code and returns a direct image URL (no upload needed)
+- Images served from a live Cloudflare Worker at `color-swatches.rory-wickham.workers.dev`
+- Optional `?size=` param (16–500px, default 100)
+- Works for single colors or bulk lists
+
+**Requirements:**
+- None — worker is already deployed
+
 ## Examples
 
 `examples/scrape_marketstreet.py` — Playwright scraper for the Market Street Salesforce PWA Kit demo storefront.

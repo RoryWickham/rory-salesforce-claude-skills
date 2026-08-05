@@ -147,7 +147,8 @@ Build the complete worker with the brand identity extracted in Step 2 applied to
 
 **Functional requirements (must match the reference implementation exactly):**
 
-- GIVEX JSON-RPC handler for methods: `dc_994`, `dc_946`, `dc_995` → balance; `dc_902`, `dc_947` → redeem; `dc_901` → activate; `dc_948` → void
+- GIVEX JSON-RPC handler for methods: `dc_994`, `dc_946`, `dc_995` → balance; `dc_902`, `dc_907`, `dc_947` → redeem; `dc_901` → activate; `dc_948` → void
+  - `dc_907` has the same param layout as `dc_902`: `[lang, seqId, user, pass, cardNumber, amount, pin]`
 - Balance result format: `[seqId, "0", "50.00", "0", "None", "USD", "", "", "", "", transRef]`
   - `result[0]` = echo of `params[1]` (seqId string like "PS00000172") — NOT generated
   - `result[2]` = balance as decimal dollars string — NOT cents
@@ -275,7 +276,7 @@ CMS: GIVEX integration → Endpoint = https://[worker-url]/
 
 - **seqId must echo `params[1]`** — never generate a new value for `result[0]`. The POS validates this. Getting it wrong causes "Order Failed" errors.
 - **All amounts are decimal dollars** — `"50.00"` not `"5000"`. Returning an integer for the balance renders as millions of dollars in POS.
-- **POS uses `dc_994` and `dc_902`** — not `dc_946`/`dc_947` as the GIVEX docs suggest. Always handle both sets.
+- **POS uses `dc_994`, `dc_902`, and `dc_907`** — not `dc_946`/`dc_947` as the GIVEX docs suggest. Always handle all three. `dc_907` is an alternate redemption method the POS uses in some checkout flows instead of `dc_902` — same param layout, must route to the same handler.
 - **KV filter** — always filter `k.name.startsWith("__")` when listing cards. Without this, transaction log and debug keys appear as card rows.
 - **Trailing slash on endpoint URL** — Retail Cloud CMS requires it. Without the slash the GIVEX calls may fail to route.
 - If a card worked fine then started requiring a second scan, it was likely scanned during a broken-response period (debugging). Issue a fresh card — it will work on first scan.

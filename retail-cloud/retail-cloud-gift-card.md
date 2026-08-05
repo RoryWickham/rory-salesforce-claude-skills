@@ -128,7 +128,21 @@ Build the complete worker with the brand identity extracted in Step 2 applied to
 - "Issue Card" button and active state accents: use the primary brand color
 - "Mock Service" badge color: use the accent color
 - Gift card graphic gradient: use the primary brand color as the dark end
-- Logo on the gift card graphic: embed the base64 logo image (or use text if logo extraction failed)
+- Logo in the header: embed as a base64 data URI — but **do not pass it through the Write tool** (35KB+ of base64 causes API timeouts). Instead:
+  1. Write `worker.js` with `LOGO_PLACEHOLDER` as the `src` attribute value
+  2. Inject the real base64 via Python after the fact:
+     ```bash
+     python3 - <<'EOF'
+     import base64, pathlib
+     logo = pathlib.Path('/tmp/logo.png').read_bytes()
+     data_uri = 'data:image/png;base64,' + base64.b64encode(logo).decode()
+     p = pathlib.Path('~/claude-projects/[worker-name]/worker.js').expanduser()
+     p.write_text(p.read_text().replace('LOGO_PLACEHOLDER', data_uri))
+     print(f"Done — {len(data_uri)} chars injected")
+     EOF
+     ```
+  3. If the logo is a dark/colored image on a light background, add `filter: invert(1) brightness(10)` to the `<img>` CSS to render it white on a dark header
+  4. If logo extraction failed or the image is too large, fall back to a styled text header instead
 - Font: apply the detected font family in the portal's CSS
 
 **Functional requirements (must match the reference implementation exactly):**

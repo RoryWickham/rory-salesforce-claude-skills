@@ -120,7 +120,7 @@ Parse the output for the namespace `id` and update `wrangler.toml` with the real
 
 ## Step 6 — Build `worker.js`
 
-Build the complete worker with the brand identity extracted in Step 2 applied to the portal. Use the Crocs gift card worker as the reference implementation — it's at `~/claude-projects/crocs/gift-card-worker/worker.js`.
+Build the complete worker with the brand identity extracted in Step 2 applied to the portal. The worker is a single `worker.js` file with all logic inline — no external dependencies except JsBarcode via CDN in the portal HTML.
 
 **Brand customizations to apply:**
 - Portal header: use the customer's brand name (derived from the domain/logo) instead of "Crocs"

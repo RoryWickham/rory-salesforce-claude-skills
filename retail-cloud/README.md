@@ -55,6 +55,23 @@ Generates a hosted solid-color PNG swatch image from a hex code, ready to paste 
 **Requirements:**
 - None — worker is already deployed
 
+### `retail-cloud-gift-card`
+
+Deploys a mock GIVEX gift card service (Cloudflare Worker + KV) for Retail Cloud demos, with a branded portal to issue and manage cards.
+
+**Invoke:** `/salesforce/retail-cloud/retail-cloud-gift-card`
+
+**What it does:**
+- Asks for the customer's storefront URL and extracts their logo and brand colors automatically
+- Deploys a branded Cloudflare Worker that speaks the GIVEX JSON-RPC protocol Retail Cloud POS expects
+- Provides a web portal to issue single or bulk cards, view barcodes, add/reset balances, and print card sheets
+- Gives you exact CMS configuration steps to wire up the GIVEX integration
+
+**Requirements:**
+- Cloudflare account with Workers & KV enabled
+- `wrangler` CLI (`npm install -g wrangler`)
+- Browser tool (for logo/color extraction)
+
 ## Examples
 
 `examples/scrape_marketstreet.py` — Playwright scraper for the Market Street Salesforce PWA Kit demo storefront.

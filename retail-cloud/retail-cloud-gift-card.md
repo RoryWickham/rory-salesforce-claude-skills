@@ -155,6 +155,10 @@ Build the complete worker with the brand identity extracted in Step 2 applied to
 
 **Barcode:** JsBarcode via CDN (`https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js`), CODE128 format.
 
+**Critical — onclick quoting in string-concatenated HTML:**  
+When building table row HTML via string concatenation (not a template literal), never use `\'` to quote card numbers inside `onclick` attributes. The `\'` in JS source becomes a bare `'` in the rendered HTML, producing broken JS like `onclick="doThing('' + val + '')"` — a SyntaxError that silently prevents the entire `<script>` block from parsing, making every button a no-op.  
+**Always use `&apos;` instead:** `onclick="doThing(&apos;' + card.cardNumber + '&apos;)"`. The browser decodes `&apos;` to `'` at attribute-parse time so the JS receives a valid string literal.
+
 ---
 
 ## Step 7 — Deploy
@@ -167,9 +171,10 @@ Confirm the Worker URL from the output (e.g. `https://[worker-name].[subdomain].
 
 ---
 
-## Step 8 — Seed a test card
+## Step 8 — Smoke test
 
-Issue one card via the portal to verify everything works end to end:
+### 8a — API test
+Issue one card to verify the backend works:
 
 ```bash
 curl -s -X POST https://[worker-url]/issue \
@@ -177,7 +182,34 @@ curl -s -X POST https://[worker-url]/issue \
   -d '{"amount": 50}' | python3 -m json.tool
 ```
 
-Tell the user the card number and balance so they can do a quick sanity check in the portal.
+Confirm the response contains `cardNumber`, `pin`, `balance: 50`, and `active: true`.
+
+### 8b — Portal JS integrity check
+Fetch the portal HTML and verify the script block is intact and contains no broken onclick quoting:
+
+```bash
+curl -s https://[worker-url]/ | python3 - <<'EOF'
+import sys, re
+html = sys.stdin.read()
+script = re.search(r'<script>(.*?)</script>', html, re.DOTALL)
+if not script:
+    print("FAIL: no <script> block found")
+    sys.exit(1)
+src = script.group(1)
+# issueCard must be defined
+if 'function issueCard' not in src:
+    print("FAIL: function issueCard missing — script block likely broken")
+    sys.exit(1)
+# No bare \' in onclick attributes (symptom of the quoting bug)
+if "onclick=\"" in html and "\\'" in html:
+    print("WARN: possible escaped single-quote in onclick — verify buttons work")
+print("OK: script block present, issueCard defined")
+EOF
+```
+
+If the check prints `FAIL`, the portal buttons will be non-functional. Fix: audit all `onclick` attributes built via string concatenation and replace any `\'` with `&apos;`.
+
+Tell the user the test card number and balance so they can confirm the portal renders it in the card list.
 
 ---
 
@@ -233,3 +265,4 @@ CMS: GIVEX integration → Endpoint = https://[worker-url]/
 - **KV filter** — always filter `k.name.startsWith("__")` when listing cards. Without this, transaction log and debug keys appear as card rows.
 - **Trailing slash on endpoint URL** — Retail Cloud CMS requires it. Without the slash the GIVEX calls may fail to route.
 - If a card worked fine then started requiring a second scan, it was likely scanned during a broken-response period (debugging). Issue a fresh card — it will work on first scan.
+- **`&apos;` not `\'` in onclick attributes** — when building table row HTML via string concatenation, `\'` in JS source becomes a bare `'` in rendered HTML, breaking the entire `<script>` block silently. All buttons become no-ops. Use `&apos;` for single quotes inside HTML attribute values built by string concatenation. Always run the Step 8b portal JS check after deploy to catch this.

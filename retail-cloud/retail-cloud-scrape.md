@@ -156,3 +156,4 @@ Ask the user: "The file is ready to import. Would you like to scrape another cat
 - If Playwright or openpyxl are not installed, install them with pip3 before running
 - Category pages protected by Cloudflare/Kasada often return 429 — try individual PDPs and sitemaps instead
 - Always check output file size — if over 100MB, warn the user they cannot manually upload to Retail Cloud and must use WebDAV/FTP/SFTP with a scheduled import job
+- **Always include wall-clock timing** — every scraper must capture `SCRAPE_START = time.time()` as the very first line after imports, and print `⏱  Total time (skill start → file ready): Xm Ys` as the final output line after the file is written. This measures total elapsed time from skill invocation to file ready, not just processing time.

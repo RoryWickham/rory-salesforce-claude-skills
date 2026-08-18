@@ -133,6 +133,24 @@ Do a spot check:
 
 Report the results to the user and confirm the file is ready to import.
 
+**Timing recap — always include this at the end of your response once the file is ready:**
+
+Record two timestamps:
+1. **Skill start time** — the moment the skill was first invoked (i.e. when you began Step 1). Note this mentally or from the conversation timestamp.
+2. **File ready time** — the moment the output CSV was confirmed written (from the `⏱` line in the scraper's terminal output).
+
+Present both in your final response as a named recap block:
+
+```
+⏱ Time recap
+  Wall clock:   X min Y sec  (from skill invocation to file ready, including any time spent waiting on your answers)
+  Active processing:   X min Y sec  (script execution + my tool calls only — excludes wait time)
+```
+
+- **Wall clock** = total calendar time from skill start to file written, including any pauses while waiting for user input
+- **Active processing** = script run time (from the `⏱` line in terminal output) plus your own tool call overhead — excludes any time the conversation was idle waiting on the user
+- If the difference between the two is less than 5 seconds, you can omit active processing and just show wall clock
+
 If any custom fields were added beyond the standard column set, remind the user:
 > "You have custom fields in this feed. To make them visible on the PDP in Retail Cloud, go to **CMS → Field Mapping** and map each custom field to one of the available **CustomString** fields (e.g. CustomString1, CustomString2, etc.)."
 

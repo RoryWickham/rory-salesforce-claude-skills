@@ -23,7 +23,7 @@ This skill deploys a self-contained mock GIVEX gift card service on Cloudflare W
 - Print sheet — browser-print-optimized grid of all active cards with barcodes, balance, and PIN
 
 **Retail Cloud CMS setup (you do this once):**
-> CMS → Store Management → Store Settings → Advanced → Gift Card Integration
+> CMS → Store Management → Integrations → Gift Cards → Create
 > - Service: **GIVEX**
 > - Store: your store number
 > - Card Type: **GiftCard**
@@ -115,6 +115,14 @@ cd ~/claude-projects/[worker-name] && npx wrangler kv namespace create GC_STORE
 ```
 
 Parse the output for the namespace `id` and update `wrangler.toml` with the real value.
+
+If the command fails with "A KV namespace with the title 'GC_STORE' already exists", that namespace belongs to a different worker. Create a customer-specific one instead (e.g. `PM_GC_STORE` for Peter Millar) to avoid data mixing — the binding in `wrangler.toml` stays `GC_STORE`, only the namespace title and id change:
+
+```bash
+npx wrangler kv namespace create [CUSTOMER]_GC_STORE
+```
+
+Update `wrangler.toml` `id` with the new namespace id.
 
 ---
 
@@ -234,7 +242,7 @@ Tell the user:
 
 > "Your gift card service is live at `https://[worker-url]`. Here's how to wire it up in Retail Cloud CMS:
 >
-> 1. Go to **CMS → Store Management → Store Settings → Advanced → Gift Card Integration**
+> 1. Go to **CMS → Store Management → Integrations → Gift Cards → Create**
 > 2. Set **Service** to **GIVEX**
 > 3. Set **Store** to your store number (e.g. `107`)
 > 4. Set **Card Type** to **GiftCard**

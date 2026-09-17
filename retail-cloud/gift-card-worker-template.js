@@ -702,7 +702,7 @@ async function loadCardList() {
     tbody.appendChild(tr);
     JsBarcode('#' + svgId, card.cardNumber, { format: 'CODE128', width: 1.0, height: 36, displayValue: false, margin: 2 });
     const svgEl = document.getElementById(svgId);
-    if (svgEl) { svgEl.setAttribute('width', '155'); svgEl.setAttribute('height', '36'); }
+    if (svgEl) { svgEl.setAttribute('width', '155'); svgEl.setAttribute('height', '36'); svgEl.setAttribute('preserveAspectRatio', 'none'); }
   });
 }
 

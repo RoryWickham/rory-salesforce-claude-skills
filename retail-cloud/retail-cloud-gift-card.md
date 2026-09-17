@@ -44,13 +44,13 @@ First, ask:
 
 **If UPDATING an existing worker:**
 
-Search for existing gift card worker folders:
+Search for existing gift card worker folders (handles both nested and legacy flat layouts):
 ```bash
-ls ~/claude-projects/*/worker.js 2>/dev/null | sed 's|/worker.js||' | sed 's|.*/||'
+find ~/claude-projects -name wrangler.toml -maxdepth 3 2>/dev/null | xargs grep -l 'gift-card\|gift_card\|GC_STORE' 2>/dev/null | sed 's|/wrangler.toml||'
 ```
 
 Suggest the most likely match based on the customer context and ask:
-> "Is your existing worker at `~/claude-projects/[suggested-folder]/`? Or is it somewhere else?"
+> "Is your existing worker at `[suggested-path]/`? Or is it somewhere else?"
 
 Once confirmed, read the existing `wrangler.toml` to get the worker name and KV namespace ID — no need to re-ask for those. Then skip directly to **Updating an existing worker** at the bottom of this skill. Stop here and do not continue with Steps 1–10.
 
@@ -86,11 +86,16 @@ Say to the user:
 > 1. **What's your Cloudflare account subdomain?**  
 >    It's the `[name]` in URLs like `[name].workers.dev`. Find it at dash.cloudflare.com → Workers & Pages.
 >
-> 2. **What name do you want for the Worker?** This becomes part of the URL (e.g. `acme-gift-card` → `acme-gift-card.[subdomain].workers.dev`). Keep it short and brand-appropriate.
+> 2. **What's the brand or customer name?** (e.g. `acme`, `dsw`, `peter-millar`) — I'll use this as the project folder name and derive the worker name as `[brand]-gift-card`, which becomes the URL slug (e.g. `acme-gift-card.[subdomain].workers.dev`).
 >
 > 3. **What's the URL of the customer's storefront?** I'll pull their logo and brand colors so the portal looks on-brand rather than generic."
 
 Wait for all three answers before proceeding.
+
+**Variable conventions for this skill:**
+- `[brand]` — the brand/folder name the user gives (e.g. `acme`)
+- `[worker-name]` — always `[brand]-gift-card` (e.g. `acme-gift-card`)
+- Worker folder path — always `~/claude-projects/[brand]/gift-card/`
 
 **Note:** Even if the user says they're set up, `wrangler` may still prompt for login on first use. If Step 5 returns an authentication error, tell them to run `! npx wrangler login` and then retry.
 
@@ -132,7 +137,13 @@ If the storefront URL is inaccessible or returns an error, tell the user and ask
 
 ## Step 3 — Create the project folder
 
-Create a folder at `~/claude-projects/[worker-name]/` (using the name from the user's answer). All files go here.
+Create the worker folder at `~/claude-projects/[brand]/gift-card/`. All files go here.
+
+```bash
+mkdir -p ~/claude-projects/[brand]/gift-card
+```
+
+This keeps all project-specific workers nested inside their parent project folder.
 
 ---
 
@@ -154,7 +165,7 @@ id = "PLACEHOLDER"
 
 Run:
 ```bash
-cd ~/claude-projects/[worker-name] && npx wrangler kv namespace create GC_STORE
+cd ~/claude-projects/[brand]/gift-card && npx wrangler kv namespace create GC_STORE
 ```
 
 Parse the output for the namespace `id` and update `wrangler.toml` with the real value.
@@ -174,7 +185,7 @@ Update `wrangler.toml` `id` with the new namespace id.
 **Do not write the worker from scratch.** Copy the canonical template and substitute brand values — this ensures consistent portal layout across all customers.
 
 ```bash
-cp ~/.claude/commands/salesforce/retail-cloud/gift-card-worker-template.js ~/claude-projects/[worker-name]/worker.js
+cp ~/.claude/commands/salesforce/retail-cloud/gift-card-worker-template.js ~/claude-projects/[brand]/gift-card/worker.js
 ```
 
 Then run this Python substitution to apply brand values:
@@ -183,7 +194,7 @@ Then run this Python substitution to apply brand values:
 python3 - <<'EOF'
 import pathlib
 
-p = pathlib.Path('~/claude-projects/[worker-name]/worker.js').expanduser()
+p = pathlib.Path('~/claude-projects/[brand]/gift-card/worker.js').expanduser()
 content = p.read_text()
 content = content.replace('{{BRAND_NAME}}',    '[Brand Name]')
 content = content.replace('{{PRIMARY_COLOR}}', '[#primary]')
@@ -200,7 +211,7 @@ python3 - <<'EOF'
 import base64, pathlib
 logo = pathlib.Path('/path/to/logo.png').read_bytes()
 data_uri = 'data:image/png;base64,' + base64.b64encode(logo).decode()
-p = pathlib.Path('~/claude-projects/[worker-name]/worker.js').expanduser()
+p = pathlib.Path('~/claude-projects/[brand]/gift-card/worker.js').expanduser()
 p.write_text(p.read_text().replace('{{LOGO_PLACEHOLDER}}', data_uri))
 print(f"Done — {len(data_uri)} chars injected")
 EOF
@@ -216,7 +227,7 @@ EOF
 ## Step 7 — Deploy
 
 ```bash
-cd ~/claude-projects/[worker-name] && npx wrangler deploy
+cd ~/claude-projects/[brand]/gift-card && npx wrangler deploy
 ```
 
 Confirm the Worker URL from the output (e.g. `https://[worker-name].[subdomain].workers.dev`).
@@ -300,8 +311,8 @@ Gift Card Service — [Brand Name]
 Worker URL:    https://[worker-url]/
 Portal:        https://[worker-url]/
 Debug:         https://[worker-url]/debug
-Source:        ~/claude-projects/[worker-name]/
-Deploy:        cd ~/claude-projects/[worker-name] && npx wrangler deploy
+Source:        ~/claude-projects/[brand]/gift-card/
+Deploy:        cd ~/claude-projects/[brand]/gift-card && npx wrangler deploy
 KV namespace:  GC_STORE ([namespace-id])
 
 CMS: GIVEX integration → Endpoint = https://[worker-url]/
@@ -322,20 +333,21 @@ Wait for confirmation before proceeding.
 
 **3. Copy the latest template:**
 ```bash
-cp ~/.claude/commands/salesforce/retail-cloud/gift-card-worker-template.js ~/claude-projects/[worker-name]/worker.js
+cp ~/.claude/commands/salesforce/retail-cloud/gift-card-worker-template.js [worker-folder]/worker.js
 ```
+where `[worker-folder]` is the confirmed path from step 1 (e.g. `~/claude-projects/dsw/gift-card`).
 
-**4. Re-run brand substitution** (same as Step 6 of the new build flow) with the confirmed values.
+**4. Re-run brand substitution** (same as Step 6 of the new build flow) with the confirmed values, substituting the actual worker folder path.
 
-**5. Re-inject the logo.** Check if there's already a white logo variant in the project folder:
+**5. Re-inject the logo.** Check if there's already a logo variant in the project folder:
 ```bash
-ls ~/claude-projects/[worker-name]/*.png 2>/dev/null
+ls [worker-folder]/*.png 2>/dev/null
 ```
 Use it if present. Otherwise re-extract from the storefront or ask the user to point to the logo file.
 
 **6. Redeploy:**
 ```bash
-cd ~/claude-projects/[worker-name] && npx wrangler deploy
+cd [worker-folder] && npx wrangler deploy
 ```
 
 **7.** Confirm the worker URL from the output and tell the user the portal is updated. No changes to `wrangler.toml` or CMS settings are needed.

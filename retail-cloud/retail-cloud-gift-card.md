@@ -38,18 +38,43 @@ This skill deploys a self-contained mock GIVEX gift card service on Cloudflare W
 
 ## Before we start
 
+First, ask:
+
+> "Do you already have a Cloudflare account with Workers set up, and have you used `wrangler` before?"
+
+**If NO (or unsure):** Walk them through setup before asking anything else:
+
+> "No problem — here's how to get set up (it's free and takes about 5 minutes):
+>
+> 1. Create a free account at **dash.cloudflare.com** if you don't have one
+> 2. Once logged in, go to **Workers & Pages** in the left sidebar — this activates Workers on your account and assigns you a `[name].workers.dev` subdomain
+> 3. Note your subdomain — it's shown at the top of the Workers & Pages page (e.g. `rory-wickham.workers.dev`)
+> 4. Make sure Node.js is installed (`node -v` in terminal — if not, install from nodejs.org)
+> 5. Log in to wrangler by running: `! npx wrangler login`
+>    - This opens a browser window — authorize it, then come back here
+>
+> Once that's done, let me know and I'll continue."
+
+Wait for confirmation before proceeding to the main questions.
+
+**If YES:** Proceed directly to the main questions below.
+
+---
+
 Say to the user:
 
 > "I'm going to deploy a mock GIVEX gift card service to Cloudflare Workers for you. Here's what I need to know first:
 >
 > 1. **What's your Cloudflare account subdomain?**  
->    It's the `[name]` in URLs like `[name].workers.dev`. Check at dash.cloudflare.com → Workers & Pages. If you don't have one, we'll create the worker and it'll use your default subdomain.
+>    It's the `[name]` in URLs like `[name].workers.dev`. Find it at dash.cloudflare.com → Workers & Pages.
 >
 > 2. **What name do you want for the Worker?** This becomes part of the URL (e.g. `acme-gift-card` → `acme-gift-card.[subdomain].workers.dev`). Keep it short and brand-appropriate.
 >
 > 3. **What's the URL of the customer's storefront?** I'll pull their logo and brand colors so the portal looks on-brand rather than generic."
 
 Wait for all three answers before proceeding.
+
+**Note:** Even if the user says they're set up, `wrangler` may still prompt for login on first use. If Step 5 returns an authentication error, tell them to run `! npx wrangler login` and then retry.
 
 ---
 

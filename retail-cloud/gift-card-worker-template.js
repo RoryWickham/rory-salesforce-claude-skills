@@ -414,7 +414,7 @@ function portalHtml() {
   .td-balance.low { color: #d32f2f; }
   .td-pin { font-family: 'Courier New', monospace; font-size: 14px; color: #444; min-width: 60px; }
   .td-issued { font-size: 12px; color: #888; white-space: nowrap; min-width: 90px; }
-  .td-barcode { text-align: center; width: 160px; min-width: 160px; max-width: 160px; }
+  .td-barcode { text-align: center; width: 160px; min-width: 160px; max-width: 160px; padding-right: 20px; }
   .td-barcode svg { display: block; margin: 0 auto; }
   .td-status { white-space: nowrap; }
   .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }

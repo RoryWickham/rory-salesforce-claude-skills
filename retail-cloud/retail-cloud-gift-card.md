@@ -151,61 +151,47 @@ Update `wrangler.toml` `id` with the new namespace id.
 
 ---
 
-## Step 6 — Build `worker.js`
+## Step 6 — Build `worker.js` from the canonical template
 
-Build the complete worker with the brand identity extracted in Step 2 applied to the portal. The worker is a single `worker.js` file with all logic inline — no external dependencies except JsBarcode via CDN in the portal HTML.
+**Do not write the worker from scratch.** Copy the canonical template and substitute brand values — this ensures consistent portal layout across all customers.
 
-**Brand customizations to apply:**
-- Portal header: use the customer's brand name (derived from the domain/logo) instead of "Crocs"
-- Header background color: use the primary brand color (or keep black if primary is light — ensure contrast)
-- "Issue Card" button and active state accents: use the primary brand color
-- "Mock Service" badge color: use the accent color
-- Gift card graphic gradient: use the primary brand color as the dark end
-- Logo in the header: embed as a base64 data URI — but **do not pass it through the Write tool** (35KB+ of base64 causes API timeouts). Instead:
-  1. Write `worker.js` with `LOGO_PLACEHOLDER` as the `src` attribute value
-  2. Inject the real base64 via Python after the fact:
-     ```bash
-     python3 - <<'EOF'
-     import base64, pathlib
-     logo = pathlib.Path('/tmp/logo.png').read_bytes()
-     data_uri = 'data:image/png;base64,' + base64.b64encode(logo).decode()
-     p = pathlib.Path('~/claude-projects/[worker-name]/worker.js').expanduser()
-     p.write_text(p.read_text().replace('LOGO_PLACEHOLDER', data_uri))
-     print(f"Done — {len(data_uri)} chars injected")
-     EOF
-     ```
-  3. If the logo is a dark/colored image on a light background, add `filter: invert(1) brightness(10)` to the `<img>` CSS to render it white on a dark header
-  4. If logo extraction failed or the image is too large, fall back to a styled text header instead
-- Font: apply the detected font family in the portal's CSS
+```bash
+cp ~/.claude/commands/salesforce/retail-cloud/gift-card-worker-template.js ~/claude-projects/[worker-name]/worker.js
+```
 
-**Functional requirements (must match the reference implementation exactly):**
+Then run this Python substitution to apply brand values:
 
-- GIVEX JSON-RPC handler for methods: `dc_994`, `dc_946`, `dc_995` → balance; `dc_902`, `dc_907`, `dc_947` → redeem; `dc_901` → activate; `dc_948` → void
-  - `dc_907` has the same param layout as `dc_902`: `[lang, seqId, user, pass, cardNumber, amount, pin]`
-- Balance result format: `[seqId, "0", "50.00", "0", "None", "USD", "", "", "", "", transRef]`
-  - `result[0]` = echo of `params[1]` (seqId string like "PS00000172") — NOT generated
-  - `result[2]` = balance as decimal dollars string — NOT cents
-- Redemption result format: `[seqId, "0", transId, amountRedeemed, remainingBalance, "None", "", "", "", "", transRef, "", "", ""]`
-- Result codes: `"0"` = OK, `"7"` = invalid card, `"5"` = inactive, `"11"` = insufficient funds
-- Card storage in KV: `{ balance, issuedAmount, pin, active, createdAt, label? }`
-- Transaction log in KV: key `__txn_<cardNumber>`, value = array of `{ ts, type, amount, balanceAfter }`
-- Transaction types: `ISSUED`, `REDEEM`, `ADD_BALANCE`, `RESET`
-- `/cards` endpoint: filter out keys starting with `__` (debug/txn keys)
-- Routes: `POST /` (GIVEX RPC), `GET /` (portal HTML), `POST /issue`, `/add-balance`, `/reset`, `/label`, `/bulk-issue`, `/delete`, `GET /balance`, `/cards`, `/history`, `/debug`
+```bash
+python3 - <<'EOF'
+import pathlib
 
-**Portal features:**
-- Issue single card (amount + optional PIN)
-- Bulk issue (N cards, same amount)
-- Card list table: status, label (inline editable), card number (with copy button), balance, PIN, issued date, barcode, actions
-- Actions per card: + Balance (modal), Reset (instant, no confirm), History (modal), Delete (confirm modal)
-- Print sheet: browser-print grid of all active cards with barcodes, balance, PIN, label
-- Refresh button on card list
+p = pathlib.Path('~/claude-projects/[worker-name]/worker.js').expanduser()
+content = p.read_text()
+content = content.replace('{{BRAND_NAME}}',    '[Brand Name]')
+content = content.replace('{{PRIMARY_COLOR}}', '[#primary]')
+content = content.replace('{{ACCENT_COLOR}}',  '[#accent]')
+p.write_text(content)
+print("Brand values substituted")
+EOF
+```
 
-**Barcode:** JsBarcode via CDN (`https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js`), CODE128 format.
+Then inject the logo as base64 (**do not pass base64 through the Write tool** — it causes API timeouts):
 
-**Critical — onclick quoting in string-concatenated HTML:**  
-When building table row HTML via string concatenation (not a template literal), never use `\'` to quote card numbers inside `onclick` attributes. The `\'` in JS source becomes a bare `'` in the rendered HTML, producing broken JS like `onclick="doThing('' + val + '')"` — a SyntaxError that silently prevents the entire `<script>` block from parsing, making every button a no-op.  
-**Always use `&apos;` instead:** `onclick="doThing(&apos;' + card.cardNumber + '&apos;)"`. The browser decodes `&apos;` to `'` at attribute-parse time so the JS receives a valid string literal.
+```bash
+python3 - <<'EOF'
+import base64, pathlib
+logo = pathlib.Path('/path/to/logo.png').read_bytes()
+data_uri = 'data:image/png;base64,' + base64.b64encode(logo).decode()
+p = pathlib.Path('~/claude-projects/[worker-name]/worker.js').expanduser()
+p.write_text(p.read_text().replace('{{LOGO_PLACEHOLDER}}', data_uri))
+print(f"Done — {len(data_uri)} chars injected")
+EOF
+```
+
+**Logo notes:**
+- The template header already has `filter: brightness(10)` on the img — this renders a dark/navy logo as white on a dark header
+- If logo extraction failed or the image is too large (>100KB), replace `{{LOGO_PLACEHOLDER}}` with an empty string — the `onerror` handler hides the img tag automatically
+- If the customer already has a white logo variant in the project folder, use that instead
 
 ---
 
@@ -313,4 +299,4 @@ CMS: GIVEX integration → Endpoint = https://[worker-url]/
 - **KV filter** — always filter `k.name.startsWith("__")` when listing cards. Without this, transaction log and debug keys appear as card rows.
 - **Trailing slash on endpoint URL** — Retail Cloud CMS requires it. Without the slash the GIVEX calls may fail to route.
 - If a card worked fine then started requiring a second scan, it was likely scanned during a broken-response period (debugging). Issue a fresh card — it will work on first scan.
-- **`&apos;` not `\'` in onclick attributes** — when building table row HTML via string concatenation, `\'` in JS source becomes a bare `'` in rendered HTML, breaking the entire `<script>` block silently. All buttons become no-ops. Use `&apos;` for single quotes inside HTML attribute values built by string concatenation. Always run the Step 8b portal JS check after deploy to catch this.
+- **Always use the canonical template** (`gift-card-worker-template.js`) — never write the worker from scratch. The template uses JS template literals for the card list (not string concatenation), which avoids the `\'`/`&apos;` quoting bug entirely. If you modify the template, keep the card list rows using template literals.

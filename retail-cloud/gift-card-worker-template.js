@@ -395,10 +395,11 @@ function portalHtml() {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #888;
-    padding: 0 12px 10px;
+    color: rgba(255,255,255,0.8);
+    padding: 10px 12px;
     text-align: left;
-    border-bottom: 1.5px solid #f0f0f0;
+    background: {{PRIMARY_COLOR}};
+    border-bottom: 2px solid {{ACCENT_COLOR}};
     white-space: nowrap;
   }
   .gc-table thead th:last-child { text-align: center; }

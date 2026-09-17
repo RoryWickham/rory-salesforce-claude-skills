@@ -431,8 +431,7 @@ function portalHtml() {
     border-radius: 4px; width: 110px; outline: none; display: none;
   }
 
-  .td-actions { white-space: nowrap; min-width: 160px; }
-  .gc-table .td-actions { padding-left: 20px; }
+  .td-actions { white-space: nowrap; min-width: 160px; text-align: center; }
   .btn-icon {
     padding: 4px 8px; font-size: 11px; font-weight: 600; border-radius: 5px;
     border: 1.5px solid; cursor: pointer; margin-right: 3px; background: transparent;

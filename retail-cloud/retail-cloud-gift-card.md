@@ -58,17 +58,17 @@ Once confirmed, read the existing `wrangler.toml` to get the worker name and KV 
 
 **If NEW worker:** Ask:
 
-> "Do you already have a Cloudflare account with Workers set up, and have you used `wrangler` before?"
+> "This will require a free Cloudflare account to host the service we're going to create. Do you already have one set up?"
 
 **If NO (or unsure):** Walk them through setup before asking anything else:
 
-> "No problem — here's how to get set up (it's free and takes about 5 minutes):
+> "No problem — it's free and takes about 5 minutes to set up:
 >
-> 1. Create a free account at **dash.cloudflare.com** if you don't have one — use your Salesforce email address
+> 1. Create a free account at **dash.cloudflare.com** — use your Salesforce email address
 > 2. Once logged in, go to **Workers & Pages** in the left sidebar — this activates Workers on your account and assigns you a `[name].workers.dev` subdomain
 > 3. Note your subdomain — it's shown at the top of the Workers & Pages page (e.g. `rory-wickham.workers.dev`)
-> 4. Make sure Node.js is installed (`node -v` in terminal — if not, install from nodejs.org)
-> 5. Log in to wrangler by running: `! npx wrangler login`
+> 4. Make sure Node.js is installed: run `! node -v` in the prompt below — if you get an error, install it from nodejs.org
+> 5. Log in to the Cloudflare CLI by running: `! npx wrangler login`
 >    - This opens a browser window — authorize it, then come back here
 >
 > Once that's done, let me know and I'll continue."

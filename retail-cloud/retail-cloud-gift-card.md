@@ -291,6 +291,25 @@ CMS: GIVEX integration → Endpoint = https://[worker-url]/
 
 ---
 
+## Updating an existing worker
+
+If a worker was deployed from an older version of the template, the fastest path to get current is a full redeploy from the template — not a surgical patch. The KV namespace is untouched so all existing cards survive.
+
+1. Copy the latest template over the existing worker:
+   ```bash
+   cp ~/.claude/commands/salesforce/retail-cloud/gift-card-worker-template.js ~/claude-projects/[worker-name]/worker.js
+   ```
+2. Re-run the brand substitution (Step 6 above) with the customer's colors and brand name.
+3. Re-inject the logo via Python (Step 6 above).
+4. Redeploy:
+   ```bash
+   cd ~/claude-projects/[worker-name] && npx wrangler deploy
+   ```
+
+No changes to `wrangler.toml` or the KV namespace are needed — those stay as-is.
+
+---
+
 ## Critical rules
 
 - **seqId must echo `params[1]`** — never generate a new value for `result[0]`. The POS validates this. Getting it wrong causes "Order Failed" errors.

@@ -399,7 +399,7 @@ function portalHtml() {
     padding: 10px 12px;
     text-align: left;
     background: {{PRIMARY_COLOR}};
-    border-bottom: 2px solid {{ACCENT_COLOR}};
+    border-bottom: none;
     white-space: nowrap;
   }
   .gc-table thead th:last-child { text-align: center; }

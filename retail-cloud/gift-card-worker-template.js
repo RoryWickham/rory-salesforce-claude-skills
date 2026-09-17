@@ -414,8 +414,8 @@ function portalHtml() {
   .td-balance.low { color: #d32f2f; }
   .td-pin { font-family: 'Courier New', monospace; font-size: 14px; color: #444; min-width: 60px; }
   .td-issued { font-size: 12px; color: #888; white-space: nowrap; min-width: 90px; }
-  .td-barcode { text-align: center; min-width: 120px; max-width: 160px; }
-  .td-barcode svg { display: block; margin: 0 auto; max-width: 140px; }
+  .td-barcode { text-align: center; width: 160px; min-width: 160px; max-width: 160px; }
+  .td-barcode svg { display: block; margin: 0 auto; }
   .td-status { white-space: nowrap; }
   .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
   .dot-active { background: #2e7d32; }
@@ -701,6 +701,8 @@ async function loadCardList() {
       </td>\`;
     tbody.appendChild(tr);
     JsBarcode('#' + svgId, card.cardNumber, { format: 'CODE128', width: 1.0, height: 36, displayValue: false, margin: 2 });
+    const svgEl = document.getElementById(svgId);
+    if (svgEl) { svgEl.setAttribute('width', '155'); svgEl.setAttribute('height', '36'); }
   });
 }
 

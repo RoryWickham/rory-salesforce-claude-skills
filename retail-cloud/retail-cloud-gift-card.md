@@ -40,6 +40,24 @@ This skill deploys a self-contained mock GIVEX gift card service on Cloudflare W
 
 First, ask:
 
+> "Are you setting up a **new** gift card worker, or **updating an existing one** to the latest portal layout?"
+
+**If UPDATING an existing worker:**
+
+Search for existing gift card worker folders:
+```bash
+ls ~/claude-projects/*/worker.js 2>/dev/null | sed 's|/worker.js||' | sed 's|.*/||'
+```
+
+Suggest the most likely match based on the customer context and ask:
+> "Is your existing worker at `~/claude-projects/[suggested-folder]/`? Or is it somewhere else?"
+
+Once confirmed, read the existing `wrangler.toml` to get the worker name and KV namespace ID — no need to re-ask for those. Then skip directly to **Updating an existing worker** at the bottom of this skill. Stop here and do not continue with Steps 1–10.
+
+---
+
+**If NEW worker:** Ask:
+
 > "Do you already have a Cloudflare account with Workers set up, and have you used `wrangler` before?"
 
 **If NO (or unsure):** Walk them through setup before asking anything else:
@@ -293,20 +311,34 @@ CMS: GIVEX integration → Endpoint = https://[worker-url]/
 
 ## Updating an existing worker
 
-If a worker was deployed from an older version of the template, the fastest path to get current is a full redeploy from the template — not a surgical patch. The KV namespace is untouched so all existing cards survive.
+The fastest path to get current is a full redeploy from the template — not a surgical patch. The KV namespace is untouched so all existing cards survive.
 
-1. Copy the latest template over the existing worker:
-   ```bash
-   cp ~/.claude/commands/salesforce/retail-cloud/gift-card-worker-template.js ~/claude-projects/[worker-name]/worker.js
-   ```
-2. Re-run the brand substitution (Step 6 above) with the customer's colors and brand name.
-3. Re-inject the logo via Python (Step 6 above).
-4. Redeploy:
-   ```bash
-   cd ~/claude-projects/[worker-name] && npx wrangler deploy
-   ```
+**1. Read the existing `wrangler.toml`** to confirm the worker name and KV namespace ID — no need to ask the user for these.
 
-No changes to `wrangler.toml` or the KV namespace are needed — those stay as-is.
+**2. Extract the current brand values** from the existing `worker.js` — grep for the `.header { background:` color and any accent color in use. Show the user what was found:
+> "Found: primary color `#XXXXXX`, accent `#XXXXXX`, brand name `[name]`. Does that still look right?"
+
+Wait for confirmation before proceeding.
+
+**3. Copy the latest template:**
+```bash
+cp ~/.claude/commands/salesforce/retail-cloud/gift-card-worker-template.js ~/claude-projects/[worker-name]/worker.js
+```
+
+**4. Re-run brand substitution** (same as Step 6 of the new build flow) with the confirmed values.
+
+**5. Re-inject the logo.** Check if there's already a white logo variant in the project folder:
+```bash
+ls ~/claude-projects/[worker-name]/*.png 2>/dev/null
+```
+Use it if present. Otherwise re-extract from the storefront or ask the user to point to the logo file.
+
+**6. Redeploy:**
+```bash
+cd ~/claude-projects/[worker-name] && npx wrangler deploy
+```
+
+**7.** Confirm the worker URL from the output and tell the user the portal is updated. No changes to `wrangler.toml` or CMS settings are needed.
 
 ---
 

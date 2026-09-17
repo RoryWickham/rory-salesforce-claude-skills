@@ -432,13 +432,12 @@ function portalHtml() {
     border-radius: 4px; width: 110px; outline: none; display: none;
   }
 
-  .td-actions { white-space: nowrap; min-width: 160px; text-align: center; }
+  .td-actions { white-space: nowrap; min-width: 160px; display: flex; justify-content: center; align-items: center; gap: 4px; }
   .btn-icon {
     padding: 4px 8px; font-size: 11px; font-weight: 600; border-radius: 5px;
-    border: 1.5px solid; cursor: pointer; margin-right: 3px; background: transparent;
+    border: 1.5px solid; cursor: pointer; background: transparent;
     transition: all 0.15s;
   }
-  .btn-icon:last-child { margin-right: 0; }
   .btn-add   { border-color: #2e7d32; color: #2e7d32; }
   .btn-add:hover { background: #2e7d32; color: #fff; }
   .btn-reset { border-color: #7b1fa2; color: #7b1fa2; }

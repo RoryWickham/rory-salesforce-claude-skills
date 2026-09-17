@@ -46,7 +46,7 @@ First, ask:
 
 > "No problem — here's how to get set up (it's free and takes about 5 minutes):
 >
-> 1. Create a free account at **dash.cloudflare.com** if you don't have one
+> 1. Create a free account at **dash.cloudflare.com** if you don't have one — use your Salesforce email address
 > 2. Once logged in, go to **Workers & Pages** in the left sidebar — this activates Workers on your account and assigns you a `[name].workers.dev` subdomain
 > 3. Note your subdomain — it's shown at the top of the Workers & Pages page (e.g. `rory-wickham.workers.dev`)
 > 4. Make sure Node.js is installed (`node -v` in terminal — if not, install from nodejs.org)

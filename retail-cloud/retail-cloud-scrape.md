@@ -113,7 +113,7 @@ If the scraper outputs raw data (Excel), write a conversion script (`convert_[si
 - Reads the raw file
 - Maps scraped fields to the output column template
 - Strips ALL commas and newlines from every text field (these cause `feed.entry.size.mismatch` errors on import)
-- Removes any rows where SalePrice or ListPrice is blank
+- Removes any rows where SalePrice or ListPrice is blank or non-positive — use `float(price) > 0`, not just a blank-string check (`"0"` passes a blank check but causes `feed.entry.non.positive` on import)
 - Outputs a CSV file (`[sitename]_product_feed.csv`) in `~/claude-projects`
 
 Run the conversion script.
@@ -125,7 +125,7 @@ Do a spot check:
 - Confirm no fields contain commas
 - Print a sample of 5 rows showing key fields (ID, Title, Color, Size, SalePrice)
 - **Images** — confirm `image_link` is populated for all rows. Check that `additional_image_link` has multiple pipe-separated URLs for at least some rows — if every row shows only one image or none, the image scraping logic likely needs fixing. Spot-check that the URLs actually belong to the product (not sidebar/related items).
-- **Prices** — confirm `sale_price` and `price` are populated. Flag any rows with blank prices to the user — blank prices cause import errors.
+- **Prices** — confirm `sale_price` and `price` are populated and positive (`float(price) > 0`). Flag any blank or zero-price rows — both cause `feed.entry.non.positive` import errors. Drop them before finalizing the CSV.
 - **Product type** — if the site has multiple categories, confirm `product_type` shows pipe-delimited values for products that appear in more than one category.
 
 **File size** — check the output file size. If it's over 100MB, warn the user:
@@ -167,7 +167,7 @@ Ask the user: "The file is ready to import. Would you like to scrape another cat
 
 - This skill is for **Retail Cloud (Predict Spring) imports ONLY** — not B2B Commerce, B2C Commerce, or any other platform
 - Always strip commas AND newlines from all text fields — both cause `feed.entry.size.mismatch` on import
-- Always remove blank-price rows
+- Always remove blank-price and zero-price rows — filter with `float(price) > 0`, not just a blank check
 - Output must be CSV, not Excel
 - Never use bare commas in URLs — encode as `%2C`
 - After the scraper runs, always verify the product count looks complete before proceeding to conversion

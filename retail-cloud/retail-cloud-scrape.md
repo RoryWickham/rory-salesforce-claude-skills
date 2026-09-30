@@ -48,7 +48,7 @@ Tell the user: "I'll use the standard Retail Cloud column set as the template. I
 
 - If they provide a file: read it and use its headers as the output columns
 - If not: use the following default column set:
-  `id, item_group_id, title, description, link, image_link, additional_image_link, color, size, gtin, sale_price, price, ProductClass, manufacturer, product_type, CurrencyCode, onlineinventory`
+  `id, item_group_id, title, description, link, image_link, additional_image_link, color, size, gtin, sale_price, price, ProductClass, manufacturer, product_type, CurrencyCode, onlineinventory, colorswatchurl`
 
 ## Step 5 — Field customizations
 
@@ -56,6 +56,7 @@ Tell the user the following defaults up front:
 - **gtin** will be auto-populated with a random 7-digit number if the site doesn't provide one
 - **ProductClass** will be set to `Merchandise` unless they'd like something different
 - **onlineinventory** will be set to a random number between 5 and 500 per variant — does that work, or would you prefer a fixed value or a different range?
+- **colorswatchurl** will be auto-discovered from the site's color swatch images (see Step 7) — left blank if the site doesn't expose them
 
 Then ask:
 1. "Would you like to change any of those defaults?"
@@ -107,6 +108,30 @@ For alternate images:
 - **Filter images by product ID** — when scraping images from the DOM, pages often include sidebar/related product images. Filter to only keep images whose URL contains the current product's ID to avoid polluting the feed with other products' images.
 - **Upgrade CDN image quality** — many sites serve thumbnail-sized images by default (e.g. Scene7 URLs with `wid=112&qlt=75`). Strip low-res params and replace with high-res equivalents. For Scene7: `base_url + "?fmt=png-alpha&qlt=95&wid=800&resMode=sharp2"`. Always check the CDN accepts arbitrary dimensions before assuming this works.
 
+### Color swatch URL (colorswatchurl)
+
+Every color variant row should have a small swatch image for use in Retail Cloud color selectors. Discover the URL pattern before writing the scraper:
+
+1. **Scene7 / CDN view-based** (e.g. LL Bean, many apparel brands): inspect the color swatch `<img>` tags on a PDP. They typically share the same base image ID as the primary image but use a different view suffix and smaller dimensions. Common Scene7 swatch view codes: `_43`, `_sw`, `_SWATCH`. If the primary image is `{IMAGE_BASE}/{img_id}_{color_id}_41?wid=950&hei=1095`, the swatch is usually `{IMAGE_BASE}/{img_id}_{color_id}_43?wid=18&hei=18` (or whatever params appear on the swatch `<img>`). Extract `img_id` and `color_id` from the existing `image_link` field — no extra fetch needed.
+   ```python
+   import re
+   SWATCH_PARAMS = "?wid=18&hei=18&defaultImage=llbprod/missing_swatch&fmt=webp,rgb,lossy&bfc=on"
+   m = re.search(r'/wim/(\d+_\d+)_\d+', image_link)
+   colorswatchurl = f"{IMAGE_BASE}/{m.group(1)}_43{SWATCH_PARAMS}" if m else ""
+   ```
+   **Always verify** the swatch view code works before hardcoding it — `curl -s -o /dev/null -w "%{http_code}"` a sample URL. Different brands use different view codes; don't assume `_43`.
+
+2. **Shopify**: each variant has a `featured_image` object with a `src`. Resize it by appending `_100x100` before the file extension, or use the CDN `width=100` param if the store uses Shopify CDN.
+   ```python
+   colorswatchurl = re.sub(r'(\.\w+)(\?.*)?$', r'_100x100\1', variant.get("featured_image", {}).get("src", ""))
+   ```
+
+3. **JSON-LD / embedded state**: check `additionalProperty` arrays and swatch data structures in the page state for a dedicated swatch image URL. Also look for `swatchImage`, `colorSwatch`, or `swatch_url` keys in any product JSON blobs.
+
+4. **Fallback**: if no swatch-specific image is available, leave `colorswatchurl` blank — do not use the full-size `image_link` as a swatch.
+
+**Always HEAD-check a sample of generated swatch URLs** before finalizing the scraper — swatch view codes that look correct may still 403 for some color/product combinations.
+
 ## Step 8 — Build and run the conversion script (if needed)
 
 If the scraper outputs raw data (Excel), write a conversion script (`convert_[sitename]_to_feed.py`) in `~/claude-projects` that:
@@ -125,6 +150,7 @@ Do a spot check:
 - Confirm no fields contain commas
 - Print a sample of 5 rows showing key fields (ID, Title, Color, Size, SalePrice)
 - **Images** — confirm `image_link` is populated for all rows. Check that `additional_image_link` has multiple pipe-separated URLs for at least some rows — if every row shows only one image or none, the image scraping logic likely needs fixing. Spot-check that the URLs actually belong to the product (not sidebar/related items).
+- **Color swatch** — confirm `colorswatchurl` is populated for colored variants. HEAD-check a sample of URLs; if any return non-200, the swatch view code or params are wrong and need correcting before the feed is imported.
 - **Prices** — confirm `sale_price` and `price` are populated and positive (`float(price) > 0`). Flag any blank or zero-price rows — both cause `feed.entry.non.positive` import errors. Drop them before finalizing the CSV.
 - **Product type** — if the site has multiple categories, confirm `product_type` shows pipe-delimited values for products that appear in more than one category.
 

@@ -150,6 +150,7 @@ Do a spot check:
 - Confirm no fields contain commas
 - Print a sample of 5 rows showing key fields (ID, Title, Color, Size, SalePrice)
 - **Images** — confirm `image_link` is populated for all rows. Check that `additional_image_link` has multiple pipe-separated URLs for at least some rows — if every row shows only one image or none, the image scraping logic likely needs fixing. Spot-check that the URLs actually belong to the product (not sidebar/related items).
+- **Description** — confirm `description` is populated for all (or nearly all) rows. If the majority are blank, the catalog/listing API likely omits descriptions — they may require a separate per-product fetch. Flag this to the user: "Description is empty across most rows. Descriptions are usually only available on individual product pages. Want me to write a backfill script that fetches each PDP and fills in the description field?"
 - **Color swatch** — confirm `colorswatchurl` is populated for colored variants. HEAD-check a sample of URLs; if any return non-200, the swatch view code or params are wrong and need correcting before the feed is imported.
 - **Prices** — confirm `sale_price` and `price` are populated and positive (`float(price) > 0`). Flag any blank or zero-price rows — both cause `feed.entry.non.positive` import errors. Drop them before finalizing the CSV.
 - **Product type** — if the site has multiple categories, confirm `product_type` shows pipe-delimited values for products that appear in more than one category.

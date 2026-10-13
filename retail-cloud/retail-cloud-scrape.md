@@ -177,11 +177,24 @@ Every color variant row should have a small swatch image for use in Retail Cloud
    ```
    In Python, store `swatch_result["value"]` directly into `colorswatchurl` — it's either a URL or a hex string, both valid in Retail Cloud.
 
-   Apply the Cloudinary fallback **only when the DOM returned nothing** — don't let it override a hex-swatch item with a product photo:
+   `colorswatchurl` must be a URL — Retail Cloud does not accept raw hex codes. When the DOM returns a hex, convert it to a PNG by calling the color-swatch Cloudflare Worker:
    ```python
+   SWATCH_WORKER = "https://color-swatch.rory-wickham.workers.dev"
+
+   if swatch_result:
+       if swatch_result["type"] == "hex":
+           color_swatch_url = f"{SWATCH_WORKER}/{swatch_result['value'].lstrip('#')}"
+       else:
+           color_swatch_url = swatch_result["value"]
+   else:
+       color_swatch_url = ""
+
+   # Cloudinary fallback only when DOM returned nothing
    if not color_swatch_url and image_link:
        color_swatch_url = re.sub(r'c_fit,w_\d+,h_\d+', 'c_fill,w_80,h_80', image_link)
    ```
+
+   The worker at `https://color-swatch.rory-wickham.workers.dev/{RRGGBB}` returns an 80×80 solid-color PNG. Files are at `~/claude-projects/peter-millar/color-swatch-worker/`. Deploy: `cd ~/claude-projects/peter-millar/color-swatch-worker && npx wrangler@3 deploy`.
 
 5. **Fallback**: if no swatch-specific image is available, leave `colorswatchurl` blank — do not use the full-size `image_link` as a swatch.
 

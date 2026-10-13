@@ -135,31 +135,53 @@ Every color variant row should have a small swatch image for use in Retail Cloud
 
 3. **JSON-LD / embedded state**: check `additionalProperty` arrays and swatch data structures in the page state for a dedicated swatch image URL. Also look for `swatchImage`, `colorSwatch`, or `swatch_url` keys in any product JSON blobs.
 
-4. **SFRA / Cloudinary sites** (e.g. Peter Millar, many B2C Commerce brands): the selected color swatch element is in the DOM. Query for it while on the color-specific PDP:
+4. **SFRA / Cloudinary sites** (e.g. Peter Millar, many B2C Commerce brands): the selected color swatch element is in the DOM. Some products use a swatch image; others (especially accessories and leather goods) use a CSS `background-color` hex. Check for both while on the color-specific PDP and return whichever is present — Retail Cloud accepts either an image URL or a hex code in `colorswatchurl`:
    ```javascript
-   // Try selected swatch <img> src first
-   var img = document.querySelector(
-     '.attribute.product-attribute [data-attr-value].selected img,' +
-     '.attribute.product-attribute [aria-checked="true"] img'
-   );
-   if (img && img.src) return img.src;
-   // Fall back to CSS background-image on the swatch button
-   var btn = document.querySelector(
-     '.attribute.product-attribute [data-attr-value].selected,' +
-     '.attribute.product-attribute [aria-checked="true"]'
-   );
-   if (btn) {
-     var bg = window.getComputedStyle(btn).backgroundImage;
-     var m = bg.match(/url\(['"]?([^'"]+)['"]?\)/);
-     if (m) return m[1];
-   }
-   return '';
+   (function() {
+     function rgbToHex(rgb) {
+       var m = rgb.match(/\d+/g);
+       if (!m || m.length < 3) return null;
+       return '#' + m.slice(0,3).map(function(v) {
+         return ('0' + parseInt(v).toString(16)).slice(-2);
+       }).join('');
+     }
+     function bgColorHex(el) {
+       var c = window.getComputedStyle(el).backgroundColor;
+       if (!c || c === 'rgba(0, 0, 0, 0)' || c === 'transparent') return null;
+       return rgbToHex(c);
+     }
+     var btn = document.querySelector(
+       '.attribute.product-attribute [data-attr-value].selected,' +
+       '.attribute.product-attribute [aria-checked="true"]'
+     );
+     if (!btn) return null;
+     // 1. <img> src
+     var img = btn.querySelector('img');
+     if (img && img.src) return {type: 'url', value: img.src};
+     // 2. background-image
+     function bgImg(el) {
+       var bg = window.getComputedStyle(el).backgroundImage;
+       var m = bg.match(/url\(['"]?([^'"]+)['"]?\)/);
+       return m ? m[1] : null;
+     }
+     var url = bgImg(btn);
+     if (url) return {type: 'url', value: url};
+     var inner = btn.querySelector('span,div');
+     if (inner) { url = bgImg(inner); if (url) return {type: 'url', value: url}; }
+     // 3. background-color hex
+     var hex = bgColorHex(btn);
+     if (hex) return {type: 'hex', value: hex};
+     if (inner) { hex = bgColorHex(inner); if (hex) return {type: 'hex', value: hex}; }
+     return null;
+   })()
    ```
-   If the DOM returns empty, derive a swatch from `image_link` by rewriting the Cloudinary transform to a small square crop:
+   In Python, store `swatch_result["value"]` directly into `colorswatchurl` — it's either a URL or a hex string, both valid in Retail Cloud.
+
+   Apply the Cloudinary fallback **only when the DOM returned nothing** — don't let it override a hex-swatch item with a product photo:
    ```python
-   color_swatch_url = re.sub(r'c_fit,w_\d+,h_\d+', 'c_fill,w_80,h_80', image_link)
+   if not color_swatch_url and image_link:
+       color_swatch_url = re.sub(r'c_fit,w_\d+,h_\d+', 'c_fill,w_80,h_80', image_link)
    ```
-   This gives a correctly color-matched thumbnail even when the swatch element selector doesn't fire.
 
 5. **Fallback**: if no swatch-specific image is available, leave `colorswatchurl` blank — do not use the full-size `image_link` as a swatch.
 

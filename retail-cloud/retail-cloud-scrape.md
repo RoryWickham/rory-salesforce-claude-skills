@@ -42,6 +42,76 @@ Which would you prefer?"
 - If they choose a single category: scrape that category only, verify output, then ask if they want to continue with the rest of the site
 - If they choose full site: crawl the home page to discover all navigable category URLs, then **recursively follow subcategory links** from each category page to build a complete list of all leaf-level category URLs. Deduplicate product URLs across all categories before scraping PDPs — a product that appears in multiple categories should only be scraped once. Combine all results into a single output file.
 
+## Step 3.5 — Attribute Discovery
+
+Before building the scraper, say to the user:
+
+> "Before I start building, let me audit what product attributes are available on this site. This determines both what the scraper can capture and what Retail Cloud configuration you'll need to make the demo filterable."
+
+Then run a two-part investigation.
+
+### Part A — PDP attribute audit
+
+Load 2–3 representative PDPs (different product types if possible) and check for structured attribute data:
+
+1. **JSON-LD `additionalProperty`** — parse all `<script type="application/ld+json">` blocks, find the one with `"@type": "Product"`, and check the `additionalProperty` array for name/value pairs.
+2. **DOM attribute/detail blocks** — check these selectors for visible label:value pairs:
+   - `.product-attributes`, `.product-details`, `.product-info-attributes li`
+   - `[class*="attribute-row"]`, `[class*="spec-row"]`, `[class*="detail-item"]`
+   - Any element with "feature", "detail", or "spec" in its class name (leaf nodes only)
+3. **Window state blobs** — check `window.__STATE__`, `window.__INITIAL_STATE__`, `window.__NEXT_DATA__`, `window.pageData`, `window.productData` for embedded attribute objects.
+
+### Part B — PLP/category facet audit
+
+Load one or two category pages and check for filter/attribution data:
+
+1. **Network intercept** — use Playwright's `page.on('response', ...)` to capture all XHR/fetch responses. Filter for JSON responses containing arrays of objects with keys like `facets`, `filters`, `attributes`, `refinements`, `values`. These are the attribution fields — material, gender, fit, sleeve, collection, occasion, etc.
+2. **DOM facet sidebar** — inspect the category page filter panel. Selectors to try: `.facets`, `.refinements`, `.filter-panel`, `[class*="facet"]`, `[class*="filter"]`. Extract the filter group names (e.g. "Material", "Fit", "Collection") — these are the attribution fields.
+
+**Important:** Attribution fields (material, gender, fit, sleeve, collection) are almost never on PDPs — they live on the category page. If Part A finds nothing, Part B is where to look.
+
+### Categorize findings
+
+After both checks, classify every attribute into one of three buckets:
+
+- **Variation fields** — attributes that create separate purchasable SKUs (color, size, width, inseam, etc.). These drive separate rows in the feed.
+- **Attribution fields** — product-level metadata used for filtering/faceting (material, gender, fit, collection, occasion, sleeve length, etc.). Same value across all variants of a product. These become dedicated columns.
+- **Not available** — attributes not exposed in any accessible data source.
+
+Present a summary to the user in this format:
+```
+Variation fields found:    color, size                       → will create separate rows per variant
+Attribution fields found:  material, gender, fit, collection → product-level, same across all variants
+Not available:             occasion, sleeve                  → not exposed in PDP or PLP data
+```
+
+### Retail Cloud field constraints — always surface this
+
+Say to the user:
+
+> "Retail Cloud supports up to 10 `CustomString` fields (CustomString1–CustomString10) for custom attributes. With [N] attribution fields found, that uses [N] slots and leaves [10-N] for future use. After import, you'll need to go to **CMS → Field Mapping** to map each custom column to a CustomString slot and enable it as a filter."
+
+If more than 10 attribution fields are found, ask: "I found more than 10 attribution fields — more than Retail Cloud's CustomString limit. Which ones are highest priority for the demo?"
+
+### Ask before proceeding
+
+Ask the user:
+
+> "I found [N] attribution fields I can capture. Want me to include all of them, or just a subset? Here's what I'd recommend for a demo: [list 3–5 highest-value ones — typically gender, material, fit/style, collection, occasion]"
+
+- If they confirm: include those columns in Step 4's column template and in the scraper
+- If they want a subset: include only those
+
+**Attribution field naming:** Always PascalCase (e.g. `Material`, `Gender`, `FitType`, `Collection`) — not camelCase or snake_case.
+
+### Flag PLP-only data
+
+If attribution data is only available on category/PLP pages (not PDPs — the common case), tell the user:
+
+> "Attribution data for this site lives on category pages, not product pages. To capture it, the scraper needs a pre-pass: either intercept the category page's facet API to build a `{product_id: {attr: value}}` lookup, or scrape the facet DOM on category pages before Phase 2 PDP scraping. This adds a Phase 1.5 to the scraper. Want me to include it?"
+
+If yes: add a Phase 1.5 to the scraper that builds a `product_attrs` dict keyed by product ID, then merges it into each PDP's output row during Phase 2.
+
 ## Step 4 — Column template
 
 Tell the user: "I'll use the standard Retail Cloud column set as the template. If you have your own import file you'd like to use instead, share the file path and I'll use that."
@@ -273,6 +343,10 @@ print(f"  ℹ️   {total_products} unique products | "
 if not any_issue:
     print("  ✓  All checks passed")
 ```
+
+**Attribution fields** — if the feed includes custom attribution columns (Material, Gender, Fit, Collection, etc.):
+- Check the fill rate per attribution field: `sum(1 for r in all_rows if r.get("Material"))` etc. Some products may not have all attributes — flag any field below 80% fill to the user.
+- Remind the user: "You have custom attribution fields in this feed. Before they appear in the POS, go to **CMS → Field Mapping** in Retail Cloud and map each column to an available CustomString slot (CustomString1–CustomString10). You'll also need to enable them as filters in the search/facet config if you want them in the filter panel."
 
 **File size** — check the output file size. If it's over 100MB, warn the user:
 > "⚠️ This file is [X]MB — too large to manually upload to Retail Cloud. You'll need to use WebDAV, FTP, or SFTP to transfer it, then schedule an import job rather than uploading through the UI."

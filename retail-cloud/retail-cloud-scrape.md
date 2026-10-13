@@ -143,7 +143,7 @@ Every color variant row should have a small swatch image for use in Retail Cloud
 
 3. **JSON-LD / embedded state**: check `additionalProperty` arrays and swatch data structures in the page state for a dedicated swatch image URL. Also look for `swatchImage`, `colorSwatch`, or `swatch_url` keys in any product JSON blobs.
 
-4. **SFRA / Cloudinary sites** (e.g. Peter Millar, many B2C Commerce brands): the selected color swatch element is in the DOM. Some products use a swatch image; others (especially accessories and leather goods) use a CSS `background-color` hex. Check for both while on the color-specific PDP and return whichever is present — Retail Cloud accepts either an image URL or a hex code in `colorswatchurl`:
+4. **SFRA / Cloudinary sites** (e.g. Peter Millar, many B2C Commerce brands): the selected color swatch element is in the DOM. Extract it while the color-specific PDP is already loaded — no extra fetch needed. Return `{type, value}` so the caller knows whether it's an image URL or a hex (see item 5 below for how to handle hex):
    ```javascript
    (function() {
      function rgbToHex(rgb) {
@@ -163,10 +163,8 @@ Every color variant row should have a small swatch image for use in Retail Cloud
        '.attribute.product-attribute [aria-checked="true"]'
      );
      if (!btn) return null;
-     // 1. <img> src
      var img = btn.querySelector('img');
      if (img && img.src) return {type: 'url', value: img.src};
-     // 2. background-image
      function bgImg(el) {
        var bg = window.getComputedStyle(el).backgroundImage;
        var m = bg.match(/url\(['"]?([^'"]+)['"]?\)/);
@@ -176,16 +174,14 @@ Every color variant row should have a small swatch image for use in Retail Cloud
      if (url) return {type: 'url', value: url};
      var inner = btn.querySelector('span,div');
      if (inner) { url = bgImg(inner); if (url) return {type: 'url', value: url}; }
-     // 3. background-color hex
      var hex = bgColorHex(btn);
      if (hex) return {type: 'hex', value: hex};
      if (inner) { hex = bgColorHex(inner); if (hex) return {type: 'hex', value: hex}; }
      return null;
    })()
    ```
-   In Python, store `swatch_result["value"]` directly into `colorswatchurl` — it's either a URL or a hex string, both valid in Retail Cloud.
 
-   `colorswatchurl` must be a URL — Retail Cloud does not accept raw hex codes. When the DOM returns a hex, convert it to a PNG by calling the color-swatch Cloudflare Worker:
+5. **Hex background-color swatches — applies to ALL platforms**: any site (SFRA, Shopify, custom) may use a CSS `background-color` hex on the swatch element instead of an image. `colorswatchurl` must always be a URL — Retail Cloud does not accept raw hex codes. When your swatch extraction returns a hex (from DOM inspection, embedded JSON, or any other source), convert it to a PNG via the color-swatch Cloudflare Worker:
    ```python
    SWATCH_WORKER = "https://color-swatch.rory-wickham.workers.dev"
 
@@ -196,15 +192,10 @@ Every color variant row should have a small swatch image for use in Retail Cloud
            color_swatch_url = swatch_result["value"]
    else:
        color_swatch_url = ""
-
-   # Cloudinary fallback only when DOM returned nothing
-   if not color_swatch_url and image_link:
-       color_swatch_url = re.sub(r'c_fit,w_\d+,h_\d+', 'c_fill,w_80,h_80', image_link)
    ```
+   The worker at `https://color-swatch.rory-wickham.workers.dev/{RRGGBB}` returns an 80×80 solid-color PNG. Source: `~/claude-projects/peter-millar/color-swatch-worker/`. Deploy: `cd ~/claude-projects/peter-millar/color-swatch-worker && npx wrangler@3 deploy`.
 
-   The worker at `https://color-swatch.rory-wickham.workers.dev/{RRGGBB}` returns an 80×80 solid-color PNG. Files are at `~/claude-projects/peter-millar/color-swatch-worker/`. Deploy: `cd ~/claude-projects/peter-millar/color-swatch-worker && npx wrangler@3 deploy`.
-
-5. **Fallback**: if no swatch-specific image is available, leave `colorswatchurl` blank — do not use the full-size `image_link` as a swatch.
+6. **Fallback**: if no swatch-specific image or hex is available, leave `colorswatchurl` blank — do not use the full-size `image_link` as a swatch.
 
 **Always HEAD-check a sample of generated swatch URLs** before finalizing the scraper — swatch view codes that look correct may still 403 for some color/product combinations.
 

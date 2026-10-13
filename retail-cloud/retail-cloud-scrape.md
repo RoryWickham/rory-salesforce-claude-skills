@@ -76,7 +76,14 @@ Before writing any scraper code, investigate how the site is structured:
    - **Tags as filter fields**: each Shopify product has a `tags` array. These often encode filter values like model year (`my26` → `2026`), riding style (`Mountain Bikes`), size, and build type. Inspect tags on a sample of products to discover patterns, then extract them into dedicated columns. Useful for Retail Cloud filter/facet configuration.
    - **`compare_at_price` zero bug**: Shopify sets `compare_at_price` to `"0"` (not null) when there's no original price. Always check `float(compare_at_price) > 0` before using it as list price — otherwise you'll get $0.00 list price rows that fail import with `feed.entry.listprice.invalid.short.desc / feed.entry.non.positive`.
    - **Per-variant images**: Each image in the `images` array has a `variant_ids` list linking it to specific variants. Build a `variant_id → src` lookup before iterating variants so each row gets its own `image_link` instead of always using `images[0]`. Images with an empty `variant_ids` list are unassigned and should be used as fallback. Put the other color images in `additional_image_link` (pipe-separated).
-2. **Check if it's a Salesforce PWA Kit / Storefront Next site** — signs: `/mobify/bundle/` in asset URLs, org ID like `f_ecom_zzrf_041` in HTML source, `/MarketStreet/en-US/` style path prefix. These are JS-rendered React apps but product data is fully embedded as JSON-LD in each PDP's HTML — no API interception needed. Use Playwright to render the page, then extract `<script type="application/ld+json">` with `@type: Product`. The JSON-LD contains name, description, price, all images, colors, and sizes. Category pages render product links you can collect with Playwright; SCAPI proxy endpoints (`/mobify/proxy/api/...`) are not publicly accessible.
+2. **Check if it's a Salesforce B2C Commerce (SFRA/Demandware) site** — signs: `/on/demandware.store/` in URLs, `dwvar_{pid}_color=` query params on PDP links, `Sites-{SiteID}-Site` in error page titles. These are server-rendered SFRA apps. Strategy:
+   - **Phase 1 — category tile crawl**: visit each category listing page, click "Load More" until exhausted (`wait_for_timeout(3000)` after each click), collect all `<a href>` links containing `/p/` and `.html`. Extract `master_pid` and `color_code` from the `dwvar_{pid}_color=` query param on each tile link. Deduplicate by `(master_pid, color_code)`.
+   - **Phase 2 — PDP scrape**: navigate to each color-specific PDP URL, extract product data from `<script type="application/ld+json">` with `@type: Product` (name, description, price, images), and extract sizes from DOM elements with `[data-attr-value]` attributes. Each color PDP only shows sizes available for that color — scrape all of them.
+   - **Phase 2b — color variant discovery (critical)**: tile crawls only surface colors that happen to be featured on listing pages. After loading each PDP, read **all** `[data-attr-value]` entries from the color attribute container (not the size container). Any colors not yet in your processing queue should be built into new PDP URLs by swapping the `dwvar_{pid}_color=` param and added to the queue. This ensures every color variant is scraped, not just the ones that appeared as tiles.
+   - **Queue pattern**: use a list-based queue (`pending`) instead of a fixed loop. Pre-populate it from Phase 1. During Phase 2, append newly discovered color variants as each PDP is visited. Track `processed_keys` (a set of `{pid}_{color}` strings) to avoid duplicates. This naturally handles variant discovery without a separate pass.
+   - **URL construction for new color variants**: use `urllib.parse` to swap the `dwvar_{pid}_color` query param — don't string-replace, as other query params may be present.
+
+3. **Check if it's a Salesforce PWA Kit / Storefront Next site** — signs: `/mobify/bundle/` in asset URLs, org ID like `f_ecom_zzrf_041` in HTML source, `/MarketStreet/en-US/` style path prefix. These are JS-rendered React apps but product data is fully embedded as JSON-LD in each PDP's HTML — no API interception needed. Use Playwright to render the page, then extract `<script type="application/ld+json">` with `@type: Product`. The JSON-LD contains name, description, price, all images, colors, and sizes. Category pages render product links you can collect with Playwright; SCAPI proxy endpoints (`/mobify/proxy/api/...`) are not publicly accessible.
 3. **Check for a first-party JSON API** — if the site is a React/Vue/Angular SPA (the HTML is just a `<div id="root"></div>` shell), download the main JS bundle and search it for a fetch wrapper and API base URL. Look for patterns like `fetch(baseUrl + "/products")`, `axios.get("/api/catalog")`, or a constant like `const API_BASE = "/api"`. Many custom storefronts expose clean REST endpoints (`/api/products`, `/api/products/:id`, `/api/categories`) that return all product and variant data in one call — no scraping needed. Test candidate endpoints directly with curl.
 4. **Check for a sitemap next** — try `/sitemap.xml` then `/sitemap_index.xml`. If found, use it to get product URLs rather than scraping category pages (which are often bot-protected).
 5. **Test if PDPs are accessible via plain HTTP** — even if category pages return 429, individual product pages often load fine with a standard User-Agent. Use `curl -s -o /dev/null -w "%{http_code}"` to check.
@@ -128,7 +135,33 @@ Every color variant row should have a small swatch image for use in Retail Cloud
 
 3. **JSON-LD / embedded state**: check `additionalProperty` arrays and swatch data structures in the page state for a dedicated swatch image URL. Also look for `swatchImage`, `colorSwatch`, or `swatch_url` keys in any product JSON blobs.
 
-4. **Fallback**: if no swatch-specific image is available, leave `colorswatchurl` blank — do not use the full-size `image_link` as a swatch.
+4. **SFRA / Cloudinary sites** (e.g. Peter Millar, many B2C Commerce brands): the selected color swatch element is in the DOM. Query for it while on the color-specific PDP:
+   ```javascript
+   // Try selected swatch <img> src first
+   var img = document.querySelector(
+     '.attribute.product-attribute [data-attr-value].selected img,' +
+     '.attribute.product-attribute [aria-checked="true"] img'
+   );
+   if (img && img.src) return img.src;
+   // Fall back to CSS background-image on the swatch button
+   var btn = document.querySelector(
+     '.attribute.product-attribute [data-attr-value].selected,' +
+     '.attribute.product-attribute [aria-checked="true"]'
+   );
+   if (btn) {
+     var bg = window.getComputedStyle(btn).backgroundImage;
+     var m = bg.match(/url\(['"]?([^'"]+)['"]?\)/);
+     if (m) return m[1];
+   }
+   return '';
+   ```
+   If the DOM returns empty, derive a swatch from `image_link` by rewriting the Cloudinary transform to a small square crop:
+   ```python
+   color_swatch_url = re.sub(r'c_fit,w_\d+,h_\d+', 'c_fill,w_80,h_80', image_link)
+   ```
+   This gives a correctly color-matched thumbnail even when the swatch element selector doesn't fire.
+
+5. **Fallback**: if no swatch-specific image is available, leave `colorswatchurl` blank — do not use the full-size `image_link` as a swatch.
 
 **Always HEAD-check a sample of generated swatch URLs** before finalizing the scraper — swatch view codes that look correct may still 403 for some color/product combinations.
 
@@ -145,7 +178,14 @@ Run the conversion script.
 
 ## Step 9 — Verify the output
 
-Do a spot check:
+**If you built a Phase 4 sanity check into the scraper** (recommended — see below), it runs automatically after the CSV is written and reports:
+- Missing required fields (`id`, `title`, `image_link`, `price`)
+- Duplicate IDs
+- Blank or zero-price rows
+- `colorswatchurl` fill rate
+- Products with only 1 color scraped (useful to spot-check variant discovery coverage)
+
+Review its output first. Then do a manual spot check:
 - Confirm total line count = 1 header + N data rows (no embedded newlines breaking rows)
 - Confirm no fields contain commas
 - Print a sample of 5 rows showing key fields (ID, Title, Color, Size, SalePrice)
@@ -154,6 +194,51 @@ Do a spot check:
 - **Color swatch** — confirm `colorswatchurl` is populated for colored variants. HEAD-check a sample of URLs; if any return non-200, the swatch view code or params are wrong and need correcting before the feed is imported.
 - **Prices** — confirm `sale_price` and `price` are populated and positive (`float(price) > 0`). Flag any blank or zero-price rows — both cause `feed.entry.non.positive` import errors. Drop them before finalizing the CSV.
 - **Product type** — if the site has multiple categories, confirm `product_type` shows pipe-delimited values for products that appear in more than one category.
+
+**Phase 4 sanity check — include this in every scraper after the CSV write:**
+```python
+from collections import Counter, defaultdict
+
+print("\nPhase 4: Sanity check...")
+any_issue = False
+
+for field in ["id", "title", "image_link", "price"]:
+    missing = [r for r in all_rows if not r.get(field)]
+    if missing:
+        print(f"  ⚠️  {len(missing)} rows missing '{field}'")
+        any_issue = True
+
+id_counts = Counter(r["id"] for r in all_rows)
+dupes = {k: v for k, v in id_counts.items() if v > 1}
+if dupes:
+    print(f"  ⚠️  {len(dupes)} duplicate IDs (e.g. {list(dupes.keys())[:3]})")
+    any_issue = True
+
+bad_price = [r for r in all_rows if float(r.get("price") or 0) <= 0]
+if bad_price:
+    print(f"  ⚠️  {len(bad_price)} rows with blank or zero price")
+    any_issue = True
+
+swatch_filled = sum(1 for r in all_rows if r.get("colorswatchurl"))
+swatch_empty = len(all_rows) - swatch_filled
+if swatch_empty:
+    print(f"  ⚠️  {swatch_empty} rows missing colorswatchurl ({swatch_filled}/{len(all_rows)} filled)")
+    any_issue = True
+else:
+    print(f"  ✓  colorswatchurl: {swatch_filled}/{len(all_rows)} filled")
+
+colors_per_group = defaultdict(set)
+for r in all_rows:
+    colors_per_group[r["item_group_id"]].add(r["color"])
+single_color_count = sum(1 for colors in colors_per_group.values() if len(colors) == 1)
+total_products = len(colors_per_group)
+print(f"  ℹ️   {total_products} unique products | "
+      f"{single_color_count} with only 1 color scraped "
+      f"({total_products - single_color_count} with 2+ colors)")
+
+if not any_issue:
+    print("  ✓  All checks passed")
+```
 
 **File size** — check the output file size. If it's over 100MB, warn the user:
 > "⚠️ This file is [X]MB — too large to manually upload to Retail Cloud. You'll need to use WebDAV, FTP, or SFTP to transfer it, then schedule an import job rather than uploading through the UI."

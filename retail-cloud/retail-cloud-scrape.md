@@ -112,22 +112,13 @@ If attribution data is only available on category/PLP pages (not PDPs — the co
 
 If yes: add a Phase 1.5 to the scraper that builds a `product_attrs` dict keyed by product ID, then merges it into each PDP's output row during Phase 2.
 
-#### SFRA sites — filtered page strategy (confirmed working)
+**General filtered-page strategy (applies to any platform):**
+1. From the category page facet sidebar, collect all `(facet_name, value)` pairs.
+2. For each pair, load the filtered category URL (format varies by platform — see platform-specific notes in Step 6) with a high `sz` / `limit` param to get all matching products at once.
+3. Extract product master IDs from that filtered page and record `product_attrs[master_id][facet_name] = value`.
+4. During Phase 2 PDP scraping, merge `product_attrs.get(master_id, {})` into each output row.
 
-On SFRA/Demandware sites, facet links in the `.refinements` sidebar are JavaScript-driven (no `href` attributes) — but SFRA's standard refinement URL pattern works:
-
-```
-{category_url}?prefn1={attr_lowercase}&prefv1={value}&sz=500
-```
-
-Steps for Phase 1.5 on SFRA:
-1. Load each category page and extract facet names + values from `.refinements` DOM text. The text pattern is: `[VALUE] ([COUNT]) Refine by [FACET NAME]: [VALUE]: [COUNT]` — parse with regex to get the facet name (e.g. "Material") and its values (e.g. "Performance", "Cotton").
-2. Convert facet name to SFRA parameter: lowercase, spaces → underscore or no-space (test both; usually lowercase no-space, e.g. `material`, `fit`, `collection`).
-3. For each `(facet, value)` pair, load `{category_url}?prefn1={facet}&prefv1={value}&sz=500` and extract product master PIDs (from `[data-pid]` or href pattern `/p/{name}/{pid}.html`).
-4. Build lookup: `product_attrs[master_pid][facet_name] = value`.
-5. During Phase 2 PDP scraping, merge `product_attrs.get(master_pid, {})` into each output row.
-
-**Cost:** ~N_facet_values × N_categories filtered page requests. Limit to 2–3 high-value attributes (Material, Collection, Fit) to keep run time manageable.
+**Cost:** ~N_facet_values × N_categories filtered page requests. Limit to 2–3 high-value attributes (Material, Collection, Fit) to keep run time manageable — skip low-signal ones like individual feature flags.
 
 ## Step 4 — Column template
 
@@ -177,6 +168,7 @@ Before writing any scraper code, investigate how the site is structured:
    - **Phase 2b — color variant discovery** *(only if enabled above)*: after loading each PDP, read **all** `[data-attr-value]` entries from the color attribute container (not the size container). Any colors not yet in your processing queue should be built into new PDP URLs by swapping the `dwvar_{pid}_color=` param and added to the queue. This ensures every color variant is scraped, not just the ones that appeared as tiles.
    - **Queue pattern**: use a list-based queue (`pending`) instead of a fixed loop. Pre-populate it from Phase 1. During Phase 2, append newly discovered color variants as each PDP is visited. Track `processed_keys` (a set of `{pid}_{color}` strings) to avoid duplicates. This naturally handles variant discovery without a separate pass.
    - **URL construction for new color variants**: use `urllib.parse` to swap the `dwvar_{pid}_color` query param — don't string-replace, as other query params may be present.
+   - **Phase 1.5 — SFRA attribution enrichment** *(only if attribution fields were confirmed in Step 3.5)*: SFRA facet links are JavaScript-driven (no `href` attributes), but the standard SFRA refinement URL pattern works: `{category_url}?prefn1={attr_lowercase}&prefv1={value}&sz=500`. Steps: (1) load each category page and extract facet names + values from `.refinements` DOM text using the pattern `[VALUE] ([COUNT]) Refine by [FACET NAME]: [VALUE]: [COUNT]`; (2) lowercase the facet name to get the SFRA param (e.g. "Material" → `material`, "Collection" → `collection`); (3) for each `(facet, value)` pair, load the filtered URL and extract product master PIDs from `[data-pid]` or href pattern `/p/{name}/{pid}.html`; (4) build `product_attrs[master_pid][FacetName] = value`; (5) merge during Phase 2.
 
 3. **Check if it's a Salesforce PWA Kit / Storefront Next site** — signs: `/mobify/bundle/` in asset URLs, org ID like `f_ecom_zzrf_041` in HTML source, `/MarketStreet/en-US/` style path prefix. These are JS-rendered React apps but product data is fully embedded as JSON-LD in each PDP's HTML — no API interception needed. Use Playwright to render the page, then extract `<script type="application/ld+json">` with `@type: Product`. The JSON-LD contains name, description, price, all images, colors, and sizes. Category pages render product links you can collect with Playwright; SCAPI proxy endpoints (`/mobify/proxy/api/...`) are not publicly accessible.
 3. **Check for a first-party JSON API** — if the site is a React/Vue/Angular SPA (the HTML is just a `<div id="root"></div>` shell), download the main JS bundle and search it for a fetch wrapper and API base URL. Look for patterns like `fetch(baseUrl + "/products")`, `axios.get("/api/catalog")`, or a constant like `const API_BASE = "/api"`. Many custom storefronts expose clean REST endpoints (`/api/products`, `/api/products/:id`, `/api/categories`) that return all product and variant data in one call — no scraping needed. Test candidate endpoints directly with curl.

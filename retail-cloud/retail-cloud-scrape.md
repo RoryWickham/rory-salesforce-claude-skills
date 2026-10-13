@@ -112,6 +112,23 @@ If attribution data is only available on category/PLP pages (not PDPs — the co
 
 If yes: add a Phase 1.5 to the scraper that builds a `product_attrs` dict keyed by product ID, then merges it into each PDP's output row during Phase 2.
 
+#### SFRA sites — filtered page strategy (confirmed working)
+
+On SFRA/Demandware sites, facet links in the `.refinements` sidebar are JavaScript-driven (no `href` attributes) — but SFRA's standard refinement URL pattern works:
+
+```
+{category_url}?prefn1={attr_lowercase}&prefv1={value}&sz=500
+```
+
+Steps for Phase 1.5 on SFRA:
+1. Load each category page and extract facet names + values from `.refinements` DOM text. The text pattern is: `[VALUE] ([COUNT]) Refine by [FACET NAME]: [VALUE]: [COUNT]` — parse with regex to get the facet name (e.g. "Material") and its values (e.g. "Performance", "Cotton").
+2. Convert facet name to SFRA parameter: lowercase, spaces → underscore or no-space (test both; usually lowercase no-space, e.g. `material`, `fit`, `collection`).
+3. For each `(facet, value)` pair, load `{category_url}?prefn1={facet}&prefv1={value}&sz=500` and extract product master PIDs (from `[data-pid]` or href pattern `/p/{name}/{pid}.html`).
+4. Build lookup: `product_attrs[master_pid][facet_name] = value`.
+5. During Phase 2 PDP scraping, merge `product_attrs.get(master_pid, {})` into each output row.
+
+**Cost:** ~N_facet_values × N_categories filtered page requests. Limit to 2–3 high-value attributes (Material, Collection, Fit) to keep run time manageable.
+
 ## Step 4 — Column template
 
 Tell the user: "I'll use the standard Retail Cloud column set as the template. If you have your own import file you'd like to use instead, share the file path and I'll use that."

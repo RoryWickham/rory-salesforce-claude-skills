@@ -27,6 +27,7 @@ Skills are then invocable by path, e.g.:
 | `b2c-commerce/` | Brand skinning, catalog converter | Planned |
 | `b2b-commerce/` | — | Planned |
 | `oms/` | — | Planned |
+| `platform/` | MCP server + ECA setup | Active |
 
 ## Contributing
 
